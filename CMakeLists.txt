@@ -11,6 +11,9 @@ add_executable(foobar
         Window.h
         device.h
         device.cpp
+        Pipeline.cpp
+        Pipeline.h
+        files.cpp
 )
 
 add_custom_command(
