@@ -1,7 +1,3 @@
-//
-// Created by customdev010 on 01.11.24.
-//
-
 #include "Window.h"
 #include <stdexcept>
 

@@ -1,7 +1,3 @@
-//
-// Created by customdev010 on 01.11.24.
-//
-
 #ifndef WINDOW_H
 #define WINDOW_H
 #include <string>
