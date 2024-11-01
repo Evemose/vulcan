@@ -9,6 +9,8 @@ find_package(glfw3 3.3.6 REQUIRED)
 add_executable(foobar
         Window.cpp
         Window.h
+        device.h
+        device.cpp
 )
 
 add_custom_command(
