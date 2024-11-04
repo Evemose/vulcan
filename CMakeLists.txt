@@ -4,23 +4,33 @@ project(firstapp)
 set(CMAKE_CXX_STANDARD 20)
 
 find_package(Vulkan REQUIRED)
-find_package(glfw3 3.3.6 REQUIRED)
+
+# Verify the path to glfw3.lib
+if(NOT EXISTS "${CMAKE_SOURCE_DIR}/libs/glfw")
+    message(FATAL_ERROR "Missing ${CMAKE_SOURCE_DIR}/libs/glfw")
+endif()
+
+add_subdirectory("${CMAKE_SOURCE_DIR}/libs/glfw")
+include_directories("${CMAKE_SOURCE_DIR}/libs/glfw/include")
 
 add_executable(foobar
-        Window.cpp
-        Window.h
-        device.h
-        device.cpp
-        Pipeline.cpp
-        Pipeline.h
-        files.cpp
-        pipeline/VertexStageParamsBuilder.h
-        pipeline/VertexStageParamsBuilder.cpp
-        pipeline/PipelineBuilder.h
-        pipeline/PipelineBuilder.cpp
-        pipeline/FragmentStageParamsBuilder.cpp
-        pipeline/FragmentStageParamsBuilder.h
-        pipeline/builders.h
+        src/Window.cpp
+        src/Window.h
+        src/device.h
+        src/device.cpp
+        src/Pipeline.cpp
+        src/Pipeline.h
+        src/files.cpp
+        src/pipeline/VertexStageParamsBuilder.h
+        src/pipeline/VertexStageParamsBuilder.cpp
+        src/pipeline/PipelineBuilder.h
+        src/pipeline/PipelineBuilder.cpp
+        src/pipeline/FragmentStageParamsBuilder.cpp
+        src/pipeline/FragmentStageParamsBuilder.h
+        src/pipeline/builders.h
+        src/shaders.h
+        src/shaders.cpp
+        src/files.h
 )
 
 add_custom_command(
@@ -28,7 +38,7 @@ add_custom_command(
         COMMAND ${CMAKE_COMMAND} -E env python3 ${CMAKE_SOURCE_DIR}/buildscripts/compile-shaders.py
 )
 
-target_sources(foobar PRIVATE main.cpp)
+target_sources(foobar PRIVATE src/main.cpp)
 
 target_link_libraries(foobar PRIVATE Vulkan::Vulkan)
 target_link_libraries(foobar PRIVATE glfw)
