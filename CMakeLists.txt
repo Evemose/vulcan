@@ -14,6 +14,13 @@ add_executable(foobar
         Pipeline.cpp
         Pipeline.h
         files.cpp
+        pipeline/VertexStageParamsBuilder.h
+        pipeline/VertexStageParamsBuilder.cpp
+        pipeline/PipelineBuilder.h
+        pipeline/PipelineBuilder.cpp
+        pipeline/FragmentStageParamsBuilder.cpp
+        pipeline/FragmentStageParamsBuilder.h
+        pipeline/builders.h
 )
 
 add_custom_command(
