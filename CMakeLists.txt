@@ -31,6 +31,18 @@ add_executable(foobar
         src/shaders.h
         src/shaders.cpp
         src/files.h
+        src/pipeline/PipelineInputAssemblyStateBuilder.cpp
+        src/pipeline/PipelineInputAssemblyStateBuilder.h
+        src/pipeline/PipelineViewportStateBuilder.cpp
+        src/pipeline/PipelineViewportStateBuilder.h
+        src/pipeline/PipelineRasterizationStateBuilder.cpp
+        src/pipeline/PipelineRasterizationStateBuilder.h
+        src/pipeline/PipelineMultisampleStateBuilder.cpp
+        src/pipeline/PipelineMultisampleStateBuilder.h
+        src/pipeline/PipelineColorBlendStateBuilder.cpp
+        src/pipeline/PipelineColorBlendStateBuilder.h
+        src/pipeline/PipelineDepthStencilStateBuilder.cpp
+        src/pipeline/PipelineDepthStencilStateBuilder.h
 )
 
 add_custom_command(
