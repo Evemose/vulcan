@@ -1,5 +1,3 @@
-// PipelineBuilder.h
-
 #ifndef PIPELINE_BUILDER_H
 #define PIPELINE_BUILDER_H
 
@@ -8,24 +6,40 @@
 
 class PipelineBuilder {
 public:
+    PipelineBuilder(float viewportWidth, float viewportHeight, VkRenderPass renderPass, VkPipelineLayout pipelineLayout);
+
     PipelineBuilder& setVertexStage(const VkPipelineShaderStageCreateInfo& vertexStage);
     PipelineBuilder& setFragmentStage(const VkPipelineShaderStageCreateInfo& fragmentStage);
-    PipelineBuilder& setRenderPass(VkRenderPass rp);
-    PipelineBuilder& setPipelineLayout(VkPipelineLayout pl);
+
+    PipelineBuilder& setInputAssemblyState(const VkPipelineInputAssemblyStateCreateInfo& inputAssembly);
+    PipelineBuilder& setRasterizationState(const VkPipelineRasterizationStateCreateInfo& rasterization);
+    PipelineBuilder& setMultisampleState(const VkPipelineMultisampleStateCreateInfo& multisample);
+    PipelineBuilder& setColorBlendState(const VkPipelineColorBlendStateCreateInfo& colorBlend);
+    PipelineBuilder& setDepthStencilState(const VkPipelineDepthStencilStateCreateInfo& depthStencil);
 
     VkPipeline build(VkDevice device) const;
 
-    static void setDefaultRenderPass(VkRenderPass rp);
-    static void setDefaultPipelineLayout(VkPipelineLayout pl);
-
 private:
-    std::optional<VkPipelineShaderStageCreateInfo> vertexStage;
-    std::optional<VkPipelineShaderStageCreateInfo> fragmentStage;
-    std::optional<VkRenderPass> renderPass;
-    std::optional<VkPipelineLayout> pipelineLayout;
+    VkPipelineShaderStageCreateInfo vertexStage{};
+    VkPipelineShaderStageCreateInfo fragmentStage{};
+    VkRenderPass renderPass;
+    VkPipelineLayout pipelineLayout;
 
-    static inline VkRenderPass defaultRenderPass = VK_NULL_HANDLE;
-    static inline VkPipelineLayout defaultPipelineLayout = VK_NULL_HANDLE;
+    VkPipelineViewportStateCreateInfo viewportState{};
+    VkViewport viewport{};
+    VkRect2D scissor{};
+
+    std::optional<VkPipelineInputAssemblyStateCreateInfo> inputAssemblyState;
+    std::optional<VkPipelineRasterizationStateCreateInfo> rasterizationState;
+    std::optional<VkPipelineMultisampleStateCreateInfo> multisampleState;
+    std::optional<VkPipelineColorBlendStateCreateInfo> colorBlendState;
+    std::optional<VkPipelineDepthStencilStateCreateInfo> depthStencilState;
+
+    [[nodiscard]] VkPipelineInputAssemblyStateCreateInfo defaultInputAssemblyState() const;
+    [[nodiscard]] VkPipelineRasterizationStateCreateInfo defaultRasterizationState() const;
+    [[nodiscard]] VkPipelineMultisampleStateCreateInfo defaultMultisampleState() const;
+    [[nodiscard]] VkPipelineColorBlendStateCreateInfo defaultColorBlendState() const;
+    [[nodiscard]] VkPipelineDepthStencilStateCreateInfo defaultDepthStencilState() const;
 };
 
 #endif // PIPELINE_BUILDER_H
