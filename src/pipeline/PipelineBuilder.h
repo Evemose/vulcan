@@ -20,6 +20,7 @@ public:
     VkPipeline build(VkDevice device) const;
 
 private:
+
     VkPipelineShaderStageCreateInfo vertexStage{};
     VkPipelineShaderStageCreateInfo fragmentStage{};
     VkRenderPass renderPass;
@@ -35,11 +36,12 @@ private:
     std::optional<VkPipelineColorBlendStateCreateInfo> colorBlendState;
     std::optional<VkPipelineDepthStencilStateCreateInfo> depthStencilState;
 
-    [[nodiscard]] VkPipelineInputAssemblyStateCreateInfo defaultInputAssemblyState() const;
-    [[nodiscard]] VkPipelineRasterizationStateCreateInfo defaultRasterizationState() const;
-    [[nodiscard]] VkPipelineMultisampleStateCreateInfo defaultMultisampleState() const;
-    [[nodiscard]] VkPipelineColorBlendStateCreateInfo defaultColorBlendState() const;
-    [[nodiscard]] VkPipelineDepthStencilStateCreateInfo defaultDepthStencilState() const;
+    [[nodiscard]] static VkPipelineInputAssemblyStateCreateInfo defaultInputAssemblyState();
+    [[nodiscard]] static VkPipelineRasterizationStateCreateInfo defaultRasterizationState();
+    [[nodiscard]] static VkPipelineMultisampleStateCreateInfo defaultMultisampleState();
+    [[nodiscard]] static VkPipelineColorBlendStateCreateInfo defaultColorBlendState();
+    [[nodiscard]] static VkPipelineDepthStencilStateCreateInfo defaultDepthStencilState();
+
 };
 
 #endif // PIPELINE_BUILDER_H

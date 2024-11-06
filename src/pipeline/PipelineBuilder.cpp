@@ -1,9 +1,11 @@
 #include "PipelineBuilder.h"
+
+#include <memory>
 #include <stdexcept>
 
-PipelineBuilder::PipelineBuilder(float viewportWidth, float viewportHeight, VkRenderPass renderPass, VkPipelineLayout pipelineLayout)
+PipelineBuilder::PipelineBuilder(float viewportWidth, float viewportHeight, VkRenderPass renderPass,
+                                 VkPipelineLayout pipelineLayout)
     : renderPass(renderPass), pipelineLayout(pipelineLayout) {
-
     // Configure application-specific viewport state
     viewport.x = 0.0f;
     viewport.y = 0.0f;
@@ -22,43 +24,42 @@ PipelineBuilder::PipelineBuilder(float viewportWidth, float viewportHeight, VkRe
     viewportState.pScissors = &scissor;
 }
 
-PipelineBuilder& PipelineBuilder::setVertexStage(const VkPipelineShaderStageCreateInfo& vertexStage) {
+PipelineBuilder &PipelineBuilder::setVertexStage(const VkPipelineShaderStageCreateInfo &vertexStage) {
     this->vertexStage = vertexStage;
     return *this;
 }
 
-PipelineBuilder& PipelineBuilder::setFragmentStage(const VkPipelineShaderStageCreateInfo& fragmentStage) {
+PipelineBuilder &PipelineBuilder::setFragmentStage(const VkPipelineShaderStageCreateInfo &fragmentStage) {
     this->fragmentStage = fragmentStage;
     return *this;
 }
 
-PipelineBuilder& PipelineBuilder::setInputAssemblyState(const VkPipelineInputAssemblyStateCreateInfo& inputAssembly) {
+PipelineBuilder &PipelineBuilder::setInputAssemblyState(const VkPipelineInputAssemblyStateCreateInfo &inputAssembly) {
     this->inputAssemblyState = inputAssembly;
     return *this;
 }
 
-PipelineBuilder& PipelineBuilder::setRasterizationState(const VkPipelineRasterizationStateCreateInfo& rasterization) {
+PipelineBuilder &PipelineBuilder::setRasterizationState(const VkPipelineRasterizationStateCreateInfo &rasterization) {
     this->rasterizationState = rasterization;
     return *this;
 }
 
-PipelineBuilder& PipelineBuilder::setMultisampleState(const VkPipelineMultisampleStateCreateInfo& multisample) {
+PipelineBuilder &PipelineBuilder::setMultisampleState(const VkPipelineMultisampleStateCreateInfo &multisample) {
     this->multisampleState = multisample;
     return *this;
 }
 
-PipelineBuilder& PipelineBuilder::setColorBlendState(const VkPipelineColorBlendStateCreateInfo& colorBlend) {
+PipelineBuilder &PipelineBuilder::setColorBlendState(const VkPipelineColorBlendStateCreateInfo &colorBlend) {
     this->colorBlendState = colorBlend;
     return *this;
 }
 
-PipelineBuilder& PipelineBuilder::setDepthStencilState(const VkPipelineDepthStencilStateCreateInfo& depthStencil) {
+PipelineBuilder &PipelineBuilder::setDepthStencilState(const VkPipelineDepthStencilStateCreateInfo &depthStencil) {
     this->depthStencilState = depthStencil;
     return *this;
 }
 
-// Default state configurations for mechanical stages
-VkPipelineInputAssemblyStateCreateInfo PipelineBuilder::defaultInputAssemblyState() const {
+VkPipelineInputAssemblyStateCreateInfo PipelineBuilder::defaultInputAssemblyState() {
     VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
     inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
     inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
@@ -66,7 +67,7 @@ VkPipelineInputAssemblyStateCreateInfo PipelineBuilder::defaultInputAssemblyStat
     return inputAssembly;
 }
 
-VkPipelineRasterizationStateCreateInfo PipelineBuilder::defaultRasterizationState() const {
+VkPipelineRasterizationStateCreateInfo PipelineBuilder::defaultRasterizationState() {
     VkPipelineRasterizationStateCreateInfo rasterization{};
     rasterization.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
     rasterization.depthClampEnable = VK_FALSE;
@@ -79,7 +80,7 @@ VkPipelineRasterizationStateCreateInfo PipelineBuilder::defaultRasterizationStat
     return rasterization;
 }
 
-VkPipelineMultisampleStateCreateInfo PipelineBuilder::defaultMultisampleState() const {
+VkPipelineMultisampleStateCreateInfo PipelineBuilder::defaultMultisampleState() {
     VkPipelineMultisampleStateCreateInfo multisample{};
     multisample.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
     multisample.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
@@ -87,20 +88,21 @@ VkPipelineMultisampleStateCreateInfo PipelineBuilder::defaultMultisampleState() 
     return multisample;
 }
 
-VkPipelineColorBlendStateCreateInfo PipelineBuilder::defaultColorBlendState() const {
-    VkPipelineColorBlendAttachmentState colorBlendAttachment{};
-    colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
-                                          VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-    colorBlendAttachment.blendEnable = VK_FALSE;
+VkPipelineColorBlendStateCreateInfo PipelineBuilder::defaultColorBlendState() {
+    static auto defaultColorBlendAttachment = VkPipelineColorBlendAttachmentState{
+        .blendEnable = VK_FALSE,
+        .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT |
+                          VK_COLOR_COMPONENT_A_BIT
+    };
 
     VkPipelineColorBlendStateCreateInfo colorBlendInfo{};
     colorBlendInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
     colorBlendInfo.attachmentCount = 1;
-    colorBlendInfo.pAttachments = &colorBlendAttachment;
+    colorBlendInfo.pAttachments = &defaultColorBlendAttachment;
     return colorBlendInfo;
 }
 
-VkPipelineDepthStencilStateCreateInfo PipelineBuilder::defaultDepthStencilState() const {
+VkPipelineDepthStencilStateCreateInfo PipelineBuilder::defaultDepthStencilState() {
     VkPipelineDepthStencilStateCreateInfo depthStencil{};
     depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
     depthStencil.depthTestEnable = VK_FALSE;
@@ -116,7 +118,7 @@ VkPipeline PipelineBuilder::build(VkDevice device) const {
         throw std::runtime_error("Vertex and fragment shader stages must be set.");
     }
 
-    VkPipelineShaderStageCreateInfo shaderStages[] = { vertexStage, fragmentStage };
+    VkPipelineShaderStageCreateInfo shaderStages[] = {vertexStage, fragmentStage};
 
     VkPipelineInputAssemblyStateCreateInfo defaultInputAssembly;
     VkPipelineRasterizationStateCreateInfo defaultRasterization;
@@ -124,16 +126,21 @@ VkPipeline PipelineBuilder::build(VkDevice device) const {
     VkPipelineColorBlendStateCreateInfo defaultColorBlend;
     VkPipelineDepthStencilStateCreateInfo defaultDepthStencil;
 
-    const VkPipelineInputAssemblyStateCreateInfo* inputAssemblyStatePtr = inputAssemblyState ?
-        &*inputAssemblyState : (defaultInputAssembly = defaultInputAssemblyState(), &defaultInputAssembly);
-    const VkPipelineRasterizationStateCreateInfo* rasterizationStatePtr = rasterizationState ?
-        &*rasterizationState : (defaultRasterization = defaultRasterizationState(), &defaultRasterization);
-    const VkPipelineMultisampleStateCreateInfo* multisampleStatePtr = multisampleState ?
-        &*multisampleState : (defaultMultisample = defaultMultisampleState(), &defaultMultisample);
-    const VkPipelineColorBlendStateCreateInfo* colorBlendStatePtr = colorBlendState ?
-        &*colorBlendState : (defaultColorBlend = defaultColorBlendState(), &defaultColorBlend);
-    const VkPipelineDepthStencilStateCreateInfo* depthStencilStatePtr = depthStencilState ?
-        &*depthStencilState : (defaultDepthStencil = defaultDepthStencilState(), &defaultDepthStencil);
+    const VkPipelineInputAssemblyStateCreateInfo *inputAssemblyStatePtr = inputAssemblyState ?
+            &*inputAssemblyState :
+            (defaultInputAssembly = defaultInputAssemblyState(), &defaultInputAssembly);
+    const VkPipelineRasterizationStateCreateInfo *rasterizationStatePtr = rasterizationState ?
+            &*rasterizationState :
+            (defaultRasterization = defaultRasterizationState(), &defaultRasterization);
+    const VkPipelineMultisampleStateCreateInfo *multisampleStatePtr = multisampleState ?
+            &*multisampleState :
+            (defaultMultisample = defaultMultisampleState(), &defaultMultisample);
+    const VkPipelineColorBlendStateCreateInfo *colorBlendStatePtr = colorBlendState ?
+            &*colorBlendState :
+            (defaultColorBlend = defaultColorBlendState(), &defaultColorBlend);
+    const VkPipelineDepthStencilStateCreateInfo *depthStencilStatePtr = depthStencilState ?
+            &*depthStencilState :
+            (defaultDepthStencil = defaultDepthStencilState(), &defaultDepthStencil);
 
     VkGraphicsPipelineCreateInfo pipelineInfo{};
     pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -157,4 +164,3 @@ VkPipeline PipelineBuilder::build(VkDevice device) const {
 
     return pipeline;
 }
-
