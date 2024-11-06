@@ -4,6 +4,12 @@
 
 #include "PipelineBuilder.h"
 #include "VertexStageParamsBuilder.h"
-#include "FragmentStageBuilder.h"
+#include "FragmentStageParamsBuilder.h"
+#include "PipelineInputAssemblyStateBuilder.h"
+#include "PipelineRasterizationStateBuilder.h"
+#include "PipelineMultisampleStateBuilder.h"
+#include "PipelineColorBlendStateBuilder.h"
+#include "PipelineDepthStencilStateBuilder.h"
+#include "PipelineViewportStateBuilder.h"
 
 #endif //BUILDERS_H

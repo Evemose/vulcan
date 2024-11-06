@@ -19,7 +19,7 @@ public:
     Window(const Window&) = delete;
     Window& operator=(const Window&) = delete;
     [[nodiscard]] bool shouldClose() const;
-    void createWindowSurface(VkInstance instance, VkSurfaceKHR* surface);
+    void createWindowSurface(VkInstance instance, VkSurfaceKHR* surface) const;
 };
 
 

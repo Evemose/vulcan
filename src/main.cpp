@@ -1,3 +1,5 @@
+#include <stdexcept>
+
 #include "Window.h"
 
 int main() {
