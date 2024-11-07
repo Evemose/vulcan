@@ -3,6 +3,12 @@
 #include <memory>
 #include <stdexcept>
 
+#include "PipelineColorBlendStateBuilder.h"
+#include "PipelineDepthStencilStateBuilder.h"
+#include "PipelineInputAssemblyStateBuilder.h"
+#include "PipelineMultisampleStateBuilder.h"
+#include "PipelineRasterizationStateBuilder.h"
+
 PipelineBuilder::PipelineBuilder(float viewportWidth, float viewportHeight, VkRenderPass renderPass,
                                  VkPipelineLayout pipelineLayout)
     : renderPass(renderPass), pipelineLayout(pipelineLayout) {
@@ -60,57 +66,28 @@ PipelineBuilder &PipelineBuilder::setDepthStencilState(const VkPipelineDepthSten
 }
 
 VkPipelineInputAssemblyStateCreateInfo PipelineBuilder::defaultInputAssemblyState() {
-    VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
-    inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-    inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-    inputAssembly.primitiveRestartEnable = VK_FALSE;
-    return inputAssembly;
+    PipelineInputAssemblyStateBuilder inputAssemblyBuilder(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
+    return inputAssemblyBuilder.build();
 }
 
 VkPipelineRasterizationStateCreateInfo PipelineBuilder::defaultRasterizationState() {
-    VkPipelineRasterizationStateCreateInfo rasterization{};
-    rasterization.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-    rasterization.depthClampEnable = VK_FALSE;
-    rasterization.rasterizerDiscardEnable = VK_FALSE;
-    rasterization.polygonMode = VK_POLYGON_MODE_FILL;
-    rasterization.cullMode = VK_CULL_MODE_BACK_BIT;
-    rasterization.frontFace = VK_FRONT_FACE_CLOCKWISE;
-    rasterization.depthBiasEnable = VK_FALSE;
-    rasterization.lineWidth = 1.0f;
-    return rasterization;
+    PipelineRasterizationStateBuilder rasterizationBuilder(VK_POLYGON_MODE_FILL, 1.0f);
+    return rasterizationBuilder.build();
 }
 
 VkPipelineMultisampleStateCreateInfo PipelineBuilder::defaultMultisampleState() {
-    VkPipelineMultisampleStateCreateInfo multisample{};
-    multisample.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-    multisample.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-    multisample.sampleShadingEnable = VK_FALSE;
-    return multisample;
+    PipelineMultisampleStateBuilder multisampleBuilder(VK_SAMPLE_COUNT_1_BIT);
+    return multisampleBuilder.build();
 }
 
 VkPipelineColorBlendStateCreateInfo PipelineBuilder::defaultColorBlendState() {
-    static auto defaultColorBlendAttachment = VkPipelineColorBlendAttachmentState{
-        .blendEnable = VK_FALSE,
-        .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT |
-                          VK_COLOR_COMPONENT_A_BIT
-    };
-
-    VkPipelineColorBlendStateCreateInfo colorBlendInfo{};
-    colorBlendInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-    colorBlendInfo.attachmentCount = 1;
-    colorBlendInfo.pAttachments = &defaultColorBlendAttachment;
-    return colorBlendInfo;
+    PipelineColorBlendStateBuilder colorBlendBuilder;
+    return colorBlendBuilder.build();
 }
 
 VkPipelineDepthStencilStateCreateInfo PipelineBuilder::defaultDepthStencilState() {
-    VkPipelineDepthStencilStateCreateInfo depthStencil{};
-    depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-    depthStencil.depthTestEnable = VK_FALSE;
-    depthStencil.depthWriteEnable = VK_FALSE;
-    depthStencil.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
-    depthStencil.depthBoundsTestEnable = VK_FALSE;
-    depthStencil.stencilTestEnable = VK_FALSE;
-    return depthStencil;
+    PipelineDepthStencilStateBuilder depthStencilBuilder;
+    return depthStencilBuilder.build();
 }
 
 VkPipeline PipelineBuilder::build(VkDevice device) const {

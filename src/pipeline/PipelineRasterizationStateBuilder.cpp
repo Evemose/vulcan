@@ -9,6 +9,9 @@ PipelineRasterizationStateBuilder::PipelineRasterizationStateBuilder(VkPolygonMo
     rasterizationInfo.cullMode = VK_CULL_MODE_NONE;
     rasterizationInfo.frontFace = VK_FRONT_FACE_CLOCKWISE;
     rasterizationInfo.depthBiasEnable = VK_FALSE;
+    rasterizationInfo.depthBiasConstantFactor = 0.0f;
+    rasterizationInfo.depthBiasClamp = 0.0f;
+    rasterizationInfo.depthBiasSlopeFactor = 0.0f;
 }
 
 PipelineRasterizationStateBuilder& PipelineRasterizationStateBuilder::setCullMode(VkCullModeFlags cullMode) {

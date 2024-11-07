@@ -29,14 +29,10 @@ VkPipelineShaderStageCreateInfo VertexStageParamsBuilder::build() const {
     VkPipelineShaderStageCreateInfo stageInfo{};
     stageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     stageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
-    stageInfo.module = shaderModule.value_or(defaultShaderModule);
+    stageInfo.module = shaderModule.value();
     stageInfo.pName = entryPointName.value_or("main");
     stageInfo.flags = flags.value_or(0);
     stageInfo.pSpecializationInfo = specializationInfo.has_value() ? &specializationInfo.value() : nullptr;
 
     return stageInfo;
-}
-
-void VertexStageParamsBuilder::setDefaultShaderModule(VkShaderModule module) {
-    defaultShaderModule = module;
 }

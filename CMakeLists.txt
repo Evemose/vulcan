@@ -5,13 +5,21 @@ set(CMAKE_CXX_STANDARD 20)
 
 find_package(Vulkan REQUIRED)
 
-# Verify the path to glfw3.lib
-if(NOT EXISTS "${CMAKE_SOURCE_DIR}/libs/glfw")
-    message(FATAL_ERROR "Missing ${CMAKE_SOURCE_DIR}/libs/glfw")
+# Unix requires the glfw library to be installed, due to some unknown issue with build from source
+# that causes window to not open
+if (UNIX)
+    find_package(glfw3 REQUIRED)
 endif()
 
-add_subdirectory("${CMAKE_SOURCE_DIR}/libs/glfw")
-include_directories("${CMAKE_SOURCE_DIR}/libs/glfw/include")
+# Windows requires the glfw library to be built from source
+if (WIN32)
+    if(NOT EXISTS "${CMAKE_SOURCE_DIR}/libs/glfw")
+        message(FATAL_ERROR "Missing ${CMAKE_SOURCE_DIR}/libs/glfw")
+    endif()
+
+    add_subdirectory("${CMAKE_SOURCE_DIR}/libs/glfw")
+    include_directories("${CMAKE_SOURCE_DIR}/libs/glfw/include")
+endif ()
 
 add_executable(foobar
         src/Window.cpp
