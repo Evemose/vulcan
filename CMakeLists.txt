@@ -51,6 +51,12 @@ add_executable(foobar
         src/pipeline/PipelineColorBlendStateBuilder.h
         src/pipeline/PipelineDepthStencilStateBuilder.cpp
         src/pipeline/PipelineDepthStencilStateBuilder.h
+        src/pipeline/PipelineVertexInputStateBuilder.cpp
+        src/pipeline/PipelineVertexInputStateBuilder.h
+        src/pipeline/PipelineLayoutBuilder.cpp
+        src/pipeline/PipelineLayoutBuilder.h
+        src/swap_chain.h
+        src/swap_chain.cpp
 )
 
 add_custom_command(

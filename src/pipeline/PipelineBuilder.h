@@ -4,6 +4,8 @@
 #include <vulkan/vulkan.h>
 #include <optional>
 
+class Device;
+
 class PipelineBuilder {
 public:
     PipelineBuilder(float viewportWidth, float viewportHeight, VkRenderPass renderPass, VkPipelineLayout pipelineLayout);
@@ -17,7 +19,7 @@ public:
     PipelineBuilder& setColorBlendState(const VkPipelineColorBlendStateCreateInfo& colorBlend);
     PipelineBuilder& setDepthStencilState(const VkPipelineDepthStencilStateCreateInfo& depthStencil);
 
-    VkPipeline build(VkDevice device) const;
+    [[nodiscard]] VkPipeline build(Device& device) const;
 
 private:
 
@@ -41,6 +43,8 @@ private:
     [[nodiscard]] static VkPipelineMultisampleStateCreateInfo defaultMultisampleState();
     [[nodiscard]] static VkPipelineColorBlendStateCreateInfo defaultColorBlendState();
     [[nodiscard]] static VkPipelineDepthStencilStateCreateInfo defaultDepthStencilState();
+    [[nodiscard]] static VkRenderPass defaultRenderPass();
+    [[nodiscard]] static VkPipelineLayout defaultPipelineLayout();
 
 };
 

@@ -33,6 +33,7 @@ VkPipelineShaderStageCreateInfo FragmentStageParamsBuilder::build() const {
     stageInfo.pName = entryPointName.value_or("main");
     stageInfo.flags = flags.value_or(0);
     stageInfo.pSpecializationInfo = specializationInfo.has_value() ? &specializationInfo.value() : nullptr;
+    stageInfo.pNext = nullptr;
 
     return stageInfo;
 }

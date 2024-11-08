@@ -11,7 +11,7 @@ int main() {
     auto device = Device(window);
     auto vkDevice = device.device();
 
-    PipelineBuilder builder(800, 600, VK_NULL_HANDLE, VK_NULL_HANDLE);
+    PipelineBuilder builder(800, 600, nullptr, nullptr);
     VkShaderModule vertexShaderModule;
     createShaderModule(vkDevice, myutils::readFile("../build/shader.vert.spv"), vertexShaderModule);
     builder.setVertexStage(VertexStageParamsBuilder()
@@ -24,7 +24,7 @@ int main() {
         .setShaderModule(fragmentShaderModule)
         .build());
 
-    builder.build(device.device());
+    builder.build(device);
     while (!window.shouldClose()) {
         glfwPollEvents();
     }

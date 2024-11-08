@@ -15,8 +15,6 @@ public:
 
     [[nodiscard]] VkPipelineShaderStageCreateInfo build() const;
 
-    static void setDefaultShaderModule(VkShaderModule module);
-
 private:
     std::optional<VkShaderModule> shaderModule;
     std::optional<const char*> entryPointName;
