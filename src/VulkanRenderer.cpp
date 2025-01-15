@@ -1,18 +1,22 @@
 #include "VulkanRenderer.h"
-
+#include "utils.h"
 #include <stdexcept>
 
 VulkanRenderer VulkanRenderer::create(GLFWwindow *window) {
     auto instance = createInstance();
+    auto device = getDevice(instance);
     return {
-        window, instance
+        window, instance, device
     };
 }
 
-VulkanRenderer::VulkanRenderer(const GLFWwindow *window, const VkInstance instance) : window(window), instance(instance) {
+VulkanRenderer::VulkanRenderer(const GLFWwindow *window, const VkInstance instance, const Device device)
+    : window(window), instance(instance), device(device) {
 }
 
-VulkanRenderer::~VulkanRenderer() = default;
+VulkanRenderer::~VulkanRenderer() {
+    vkDestroyInstance(instance, nullptr);
+}
 
 std::vector<const char *> VulkanRenderer::getExtensions() {
     auto extensions = std::vector<const char *>();
@@ -52,9 +56,27 @@ VkInstance VulkanRenderer::createInstance() {
     createInfo.ppEnabledLayerNames = nullptr;
 
     VkInstance instance;
-    if (vkCreateInstance(&createInfo, nullptr, &instance) != VK_SUCCESS) {
-        throw std::runtime_error("Failed to create instance!");
-    }
+    VK_CHECK(vkCreateInstance(&createInfo, nullptr, &instance));
 
     return instance;
+}
+
+VkPhysicalDevice VulkanRenderer::get_physical_device(VkInstance instance) {
+    std::vector<VkPhysicalDevice> devices;
+    uint32_t deviceCount = 0;
+    vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
+    if (deviceCount == 0) {
+        throw std::runtime_error("No Vulkan devices found");
+    }
+    devices.resize(deviceCount);
+    vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
+
+    return devices[0];
+}
+
+VulkanRenderer::Device VulkanRenderer::getDevice(VkInstance instance) {
+    auto physicalDevice = get_physical_device(instance);
+    VkDeviceCreateInfo deviceCreateInfo = {};
+    deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+
 }

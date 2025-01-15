@@ -10,15 +10,24 @@ public:
     static VulkanRenderer create(GLFWwindow* window);
     ~VulkanRenderer();
 private:
+    typedef struct {
+        VkPhysicalDevice physicalDevice;
+        VkDevice logicalDevice;
+    } Device;
+
     const GLFWwindow* window;
     const VkInstance instance;
-    VulkanRenderer(const GLFWwindow *window, VkInstance instance);
+    const Device device{};
+
+    VulkanRenderer(const GLFWwindow *window, VkInstance instance, Device device);
 
     static std::vector<const char *> getExtensions();
-
     static VkApplicationInfo getAppInfo();
-
     static VkInstance createInstance();
+
+    static VkPhysicalDevice get_physical_device(VkInstance instance);
+
+    static Device getDevice(VkInstance instance);
 };
 
 
