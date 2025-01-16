@@ -15,19 +15,34 @@ private:
         VkDevice logicalDevice;
     } Device;
 
+    typedef struct {
+        int graphicsFamily = -1;
+
+        [[nodiscard]] bool isValid() const {
+            return graphicsFamily >= 0;
+        }
+    } QueueFamilyIndices;
+
     const GLFWwindow* window;
     const VkInstance instance;
     const Device device{};
+    const QueueFamilyIndices queues;
 
-    VulkanRenderer(const GLFWwindow *window, VkInstance instance, Device device);
+    VulkanRenderer(const GLFWwindow *window, VkInstance instance, Device device, QueueFamilyIndices queues);
 
     static std::vector<const char *> getExtensions();
     static VkApplicationInfo getAppInfo();
     static VkInstance createInstance();
 
-    static VkPhysicalDevice get_physical_device(VkInstance instance);
+    static VkPhysicalDevice getPhysicalDevice(VkInstance instance);
 
-    static Device getDevice(VkInstance instance);
+    static VkDevice createLogicalDevice(VkPhysicalDevice physicalDevice, QueueFamilyIndices queues);
+
+    static std::tuple<Device, QueueFamilyIndices>  getDevice(VkInstance instance);
+
+    static QueueFamilyIndices getQueueFamilies(VkPhysicalDevice device);
+
+    static [[nodiscard]] bool isDeviceSuitable(VkPhysicalDevice device);
 };
 
 

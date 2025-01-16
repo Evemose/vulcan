@@ -1,21 +1,23 @@
 #include "VulkanRenderer.h"
 #include "utils.h"
 #include <stdexcept>
+#include <tuple>
 
 VulkanRenderer VulkanRenderer::create(GLFWwindow *window) {
     auto instance = createInstance();
-    auto device = getDevice(instance);
+    auto [device, queues] = getDevice(instance);
     return {
-        window, instance, device
+        window, instance, device, queues
     };
 }
 
-VulkanRenderer::VulkanRenderer(const GLFWwindow *window, const VkInstance instance, const Device device)
-    : window(window), instance(instance), device(device) {
+VulkanRenderer::VulkanRenderer(const GLFWwindow *window, VkInstance instance, const Device device, const QueueFamilyIndices queues)
+    : window(window), instance(instance), device(device), queues(queues) {
 }
 
 VulkanRenderer::~VulkanRenderer() {
     vkDestroyInstance(instance, nullptr);
+    vkDestroyDevice(device.logicalDevice, nullptr);
 }
 
 std::vector<const char *> VulkanRenderer::getExtensions() {
@@ -61,7 +63,7 @@ VkInstance VulkanRenderer::createInstance() {
     return instance;
 }
 
-VkPhysicalDevice VulkanRenderer::get_physical_device(VkInstance instance) {
+VkPhysicalDevice VulkanRenderer::getPhysicalDevice(VkInstance instance) {
     std::vector<VkPhysicalDevice> devices;
     uint32_t deviceCount = 0;
     vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
@@ -71,12 +73,68 @@ VkPhysicalDevice VulkanRenderer::get_physical_device(VkInstance instance) {
     devices.resize(deviceCount);
     vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
 
-    return devices[0];
+    for (const auto &device: devices) {
+        if (isDeviceSuitable(device)) {
+            return device;
+        }
+    }
+
+    throw std::runtime_error("No suitable Vulkan devices found");
 }
 
-VulkanRenderer::Device VulkanRenderer::getDevice(VkInstance instance) {
-    auto physicalDevice = get_physical_device(instance);
+VkDevice VulkanRenderer::createLogicalDevice(VkPhysicalDevice physicalDevice, QueueFamilyIndices queues) {
+    VkDeviceQueueCreateInfo queueCreateInfo = {};
+    queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+
+    auto [graphicsFamily] = queues;
+    queueCreateInfo.queueFamilyIndex = graphicsFamily;
+    queueCreateInfo.queueCount = 1;
+    constexpr float queuePriority = 1.0f;
+    queueCreateInfo.pQueuePriorities = &queuePriority;
+
     VkDeviceCreateInfo deviceCreateInfo = {};
     deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+    deviceCreateInfo.queueCreateInfoCount = 1;
+    deviceCreateInfo.pQueueCreateInfos = &queueCreateInfo;
+    deviceCreateInfo.enabledExtensionCount = 0;
+    deviceCreateInfo.ppEnabledExtensionNames = nullptr;
 
+    VkPhysicalDeviceFeatures deviceFeatures = {};
+    deviceCreateInfo.pEnabledFeatures = &deviceFeatures;
+
+    VkDevice logicalDevice;
+    VK_CHECK(vkCreateDevice(physicalDevice, &deviceCreateInfo, nullptr, &logicalDevice));
+
+    return logicalDevice;
+}
+
+std::tuple<VulkanRenderer::Device, VulkanRenderer::QueueFamilyIndices> VulkanRenderer::getDevice(VkInstance instance) {
+    const auto physicalDevice = getPhysicalDevice(instance);
+    const auto queues = getQueueFamilies(physicalDevice);
+    const auto logicalDevice = createLogicalDevice(physicalDevice, queues);
+    const Device device = {physicalDevice, logicalDevice};
+    return {device, queues};
+}
+
+VulkanRenderer::QueueFamilyIndices VulkanRenderer::getQueueFamilies(VkPhysicalDevice device) {
+    QueueFamilyIndices indices;
+    auto queueFamilyCount = 0u;
+    vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
+
+    auto queueFamilies = std::vector<VkQueueFamilyProperties>(queueFamilyCount);
+    vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
+
+    for (auto i = 0; i < queueFamilyCount && !indices.isValid(); i++) {
+        const auto queueFamily = queueFamilies[i];
+        if (queueFamily.queueCount > 0 && queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
+            indices.graphicsFamily = i;
+        }
+    }
+
+    return indices;
+}
+
+bool VulkanRenderer::isDeviceSuitable(VkPhysicalDevice device) {
+    auto indices = getQueueFamilies(device);
+    return indices.isValid();
 }
