@@ -2,13 +2,16 @@
 #define VULKARENDERER_H
 
 #define GLFW_INCLUDE_VULKAN
+#include <tuple>
 #include <GLFW/glfw3.h>
 #include <vector>
 
 class VulkanRenderer {
 public:
-    static VulkanRenderer create(GLFWwindow* window);
+    static VulkanRenderer create(GLFWwindow *window);
+
     ~VulkanRenderer();
+
 private:
     typedef struct {
         VkPhysicalDevice physicalDevice;
@@ -17,34 +20,49 @@ private:
 
     typedef struct {
         int graphicsFamily = -1;
+        int presentFamily = -1;
 
         [[nodiscard]] bool isValid() const {
-            return graphicsFamily >= 0;
+            return graphicsFamily >= 0
+                   && presentFamily >= 0;
         }
     } QueueFamilyIndices;
 
-    const GLFWwindow* window;
+    typedef struct {
+        VkSurfaceCapabilitiesKHR surfaceCapabilities;
+        std::vector<VkSurfaceFormatKHR> formats;
+        std::vector<VkPresentModeKHR> presentModes;
+
+        [[nodiscard]] bool isValid() const {
+            return !formats.empty() && !presentModes.empty();
+        }
+    } SwapChainDetails;
+
+    const GLFWwindow *window;
     const VkInstance instance;
     const Device device{};
     const QueueFamilyIndices queues;
+    const VkSurfaceKHR surface;
+    const VkQueue graphicsQueue;
+    const VkQueue presentQueue;
 
-    VulkanRenderer(const GLFWwindow *window, VkInstance instance, Device device, QueueFamilyIndices queues);
+    VulkanRenderer(const GLFWwindow *window, VkInstance instance, Device device, QueueFamilyIndices queues,
+                   VkSurfaceKHR surface);
 
-    static std::vector<const char *> getExtensions();
-    static VkApplicationInfo getAppInfo();
-    static VkInstance createInstance();
+    static VkPhysicalDevice getPhysicalDevice(VkInstance instance, VkSurfaceKHR surfaceTuSupport);
 
-    static VkPhysicalDevice getPhysicalDevice(VkInstance instance);
+    static std::vector<VkDeviceQueueCreateInfo> getQueueCreateInfos(QueueFamilyIndices queues);
 
     static VkDevice createLogicalDevice(VkPhysicalDevice physicalDevice, QueueFamilyIndices queues);
 
-    static std::tuple<Device, QueueFamilyIndices>  getDevice(VkInstance instance);
+    static std::tuple<Device, QueueFamilyIndices, SwapChainDetails> getDeviceAndDetails(VkInstance instance, VkSurfaceKHR surfaceToSupport);
 
-    static QueueFamilyIndices getQueueFamilies(VkPhysicalDevice device);
+    static SwapChainDetails getSwapChainDetails(VkPhysicalDevice device, VkSurfaceKHR surface);
 
-    static [[nodiscard]] bool isDeviceSuitable(VkPhysicalDevice device);
+    static QueueFamilyIndices getQueueFamilies(VkPhysicalDevice device, VkSurfaceKHR surfaceTuSupport);
+
+    static [[nodiscard]] bool isDeviceSuitable(VkPhysicalDevice device, VkSurfaceKHR surfaceTuSupport);
 };
-
 
 
 #endif //VULKARENDERER_H

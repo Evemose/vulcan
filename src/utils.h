@@ -1,3 +1,4 @@
+#pragma once
 #include <stdexcept>   // For std::runtime_error
 #include <string>      // For std::to_string
 
