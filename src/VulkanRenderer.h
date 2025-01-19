@@ -38,6 +38,18 @@ private:
         }
     } SwapChainDetails;
 
+    typedef struct {
+        VkImage image;
+        VkImageView imageView;
+    } SwapChainImage;
+
+    typedef struct {
+        const VkSwapchainKHR swapChain;
+        const VkFormat swapChainImageFormat;
+        const VkExtent2D swapChainExtent;
+        const std::vector<SwapChainImage> swapChainImages;
+    } SwapChainAndMetadata;
+
     const GLFWwindow *window;
     const VkInstance instance;
     const Device device{};
@@ -45,9 +57,10 @@ private:
     const VkSurfaceKHR surface;
     const VkQueue graphicsQueue;
     const VkQueue presentQueue;
+    const SwapChainAndMetadata swapChainAndMetadata;
 
     VulkanRenderer(const GLFWwindow *window, VkInstance instance, Device device, QueueFamilyIndices queues,
-                   VkSurfaceKHR surface);
+                   VkSurfaceKHR surface, SwapChainAndMetadata  swapChainAndMetadata);
 
     static VkPhysicalDevice getPhysicalDevice(VkInstance instance, VkSurfaceKHR surfaceTuSupport);
 
@@ -61,7 +74,11 @@ private:
 
     static QueueFamilyIndices getQueueFamilies(VkPhysicalDevice device, VkSurfaceKHR surfaceTuSupport);
 
-    static [[nodiscard]] bool isDeviceSuitable(VkPhysicalDevice device, VkSurfaceKHR surfaceTuSupport);
+    static bool isDeviceSuitable(VkPhysicalDevice device, VkSurfaceKHR surfaceTuSupport);
+
+    static VkImageView createImageView(VkDevice vkDevice, VkImage image, VkFormat format, VkImageAspectFlagBits vkImageAspectFlagBits);
+
+    static SwapChainAndMetadata createSwapChain(Device device, VkSurfaceKHR surface, GLFWwindow *window);
 };
 
 

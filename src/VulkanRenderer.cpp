@@ -1,11 +1,16 @@
 #include "VulkanRenderer.h"
 
 #include <cstring>
+#include <ranges>
 #include <set>
 
 #include "utils.h"
 #include <stdexcept>
 #include <tuple>
+#include <unordered_set>
+#include <utility>
+
+#include "swapchain_choices.h"
 
 const auto requiredExtensions = std::vector{VK_KHR_SWAPCHAIN_EXTENSION_NAME};
 
@@ -62,8 +67,9 @@ VulkanRenderer VulkanRenderer::create(GLFWwindow* window) {
     auto instance = createInstance();
     auto surface = createSurface(instance, window);
     auto [device, queues, swapChainDetails] = getDeviceAndDetails(instance, surface);
+    auto swapChainAndMeta = createSwapChain(device, surface, window);
     return {
-        window, instance, device, queues, surface
+        window, instance, device, queues, surface, swapChainAndMeta
     };
 }
 
@@ -79,17 +85,23 @@ VkQueue getPresentQueue(const VkDevice device, const int presentFamilyIdx) {
     return presentQueue;
 }
 
-VulkanRenderer::VulkanRenderer(const GLFWwindow* window, const VkInstance instance, const Device device,
-                               const QueueFamilyIndices queues, const VkSurfaceKHR surface)
-    : window(window), instance(instance), device(device), queues(queues), surface(surface),
-      graphicsQueue(getGraphicsQueue(device.logicalDevice, queues.graphicsFamily)),
-      presentQueue(getPresentQueue(device.logicalDevice, queues.presentFamily)) {
+VulkanRenderer::VulkanRenderer(
+    const GLFWwindow* window, VkInstance instance, Device device, QueueFamilyIndices queues,
+    VkSurfaceKHR surface, SwapChainAndMetadata swapChainAndMetadata
+): window(window), instance(instance), device(device), queues(queues), surface(surface),
+   graphicsQueue(getGraphicsQueue(device.logicalDevice, queues.graphicsFamily)),
+   presentQueue(getPresentQueue(device.logicalDevice, queues.presentFamily)),
+   swapChainAndMetadata(std::move(swapChainAndMetadata)) {
 }
 
 VulkanRenderer::~VulkanRenderer() {
-    vkDestroyInstance(instance, nullptr);
-    vkDestroyDevice(device.logicalDevice, nullptr);
+    for (const auto& swapChainImage : swapChainAndMetadata.swapChainImages) {
+        vkDestroyImageView(device.logicalDevice, swapChainImage.imageView, nullptr);
+    }
+    vkDestroySwapchainKHR(device.logicalDevice, swapChainAndMetadata.swapChain, nullptr);
     vkDestroySurfaceKHR(instance, surface, nullptr);
+    vkDestroyDevice(device.logicalDevice, nullptr);
+    vkDestroyInstance(instance, nullptr);
 }
 
 VkPhysicalDevice VulkanRenderer::getPhysicalDevice(const VkInstance instance, const VkSurfaceKHR surfaceTuSupport) {
@@ -233,4 +245,90 @@ bool VulkanRenderer::isDeviceSuitable(const VkPhysicalDevice device, const VkSur
     return getQueueFamilies(device, surfaceTuSupport).isValid()
         && hasAllRequiredExtensions(getAvailableExtensions(device))
         && getSwapChainDetails(device, surfaceTuSupport).isValid();
+}
+
+VkImageView VulkanRenderer::createImageView(
+    VkDevice vkDevice, VkImage image, VkFormat format, VkImageAspectFlagBits vkImageAspectFlagBits
+) {
+    VkImageViewCreateInfo viewInfo = {};
+    viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+    viewInfo.image = image;
+    viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+    viewInfo.format = format;
+
+    viewInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+    viewInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+    viewInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+    viewInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+
+    viewInfo.subresourceRange.aspectMask = vkImageAspectFlagBits;
+    viewInfo.subresourceRange.baseMipLevel = 0;
+    viewInfo.subresourceRange.levelCount = 1;
+    viewInfo.subresourceRange.baseArrayLayer = 0;
+    viewInfo.subresourceRange.layerCount = 1;
+
+    VkImageView imageView;
+    VK_CHECK(vkCreateImageView(vkDevice, &viewInfo, nullptr, &imageView));
+    return imageView;
+}
+
+VulkanRenderer::SwapChainAndMetadata VulkanRenderer::createSwapChain(
+    const Device device, const VkSurfaceKHR surface, GLFWwindow* window
+) {
+    const auto swapChainDetails = getSwapChainDetails(device.physicalDevice, surface);
+
+    const auto bestSurfaceFormat = chooseSwapSurfaceFormat(swapChainDetails.formats);
+    const auto bestPresentMode = chooseSwapPresentMode(swapChainDetails.presentModes);
+    const auto extent = chooseSwapExtent(swapChainDetails.surfaceCapabilities, window);
+
+    VkSwapchainCreateInfoKHR createInfo = {};
+    createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+    createInfo.surface = surface;
+    createInfo.imageFormat = bestSurfaceFormat.format;
+    createInfo.imageColorSpace = bestSurfaceFormat.colorSpace;
+    createInfo.imageExtent = extent;
+    createInfo.presentMode = bestPresentMode;
+    createInfo.imageArrayLayers = 1;
+    createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    createInfo.preTransform = swapChainDetails.surfaceCapabilities.currentTransform;
+    createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+    createInfo.clipped = VK_TRUE;
+    const auto minSwapChainImages = std::min(
+        swapChainDetails.surfaceCapabilities.minImageCount + 1,
+        swapChainDetails.surfaceCapabilities.maxImageCount
+    );
+    createInfo.minImageCount = minSwapChainImages;
+
+    auto queues = getQueueFamilies(device.physicalDevice, surface);
+
+    if (queues.graphicsFamily != queues.presentFamily) {
+        createInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
+        createInfo.queueFamilyIndexCount = 2;
+        const uint32_t queueFamilyIndices[] = {
+            static_cast<uint32_t>(queues.graphicsFamily),
+            static_cast<uint32_t>(queues.presentFamily)
+        };
+        createInfo.pQueueFamilyIndices = queueFamilyIndices;
+    }
+    else {
+        createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    }
+    createInfo.oldSwapchain = VK_NULL_HANDLE;
+
+    VkSwapchainKHR swapChain;
+    VK_CHECK(vkCreateSwapchainKHR(device.logicalDevice, &createInfo, nullptr, &swapChain));
+
+    uint32_t imageCount;
+    vkGetSwapchainImagesKHR(device.logicalDevice, swapChain, &imageCount, nullptr);
+    auto swapChainVkImages = std::vector<VkImage>(imageCount);
+    vkGetSwapchainImagesKHR(device.logicalDevice, swapChain, &imageCount, swapChainVkImages.data());
+
+    auto mappedImages = std::vector<SwapChainImage>(imageCount);
+    for (auto i = 0u; i < imageCount; i++) {
+        auto& image = mappedImages[i];
+        image.image = swapChainVkImages[i];
+        image.imageView = createImageView(device.logicalDevice, image.image, bestSurfaceFormat.format, VK_IMAGE_ASPECT_COLOR_BIT);
+    }
+
+    return {swapChain, bestSurfaceFormat.format, extent, mappedImages};
 }
