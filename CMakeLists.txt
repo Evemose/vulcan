@@ -5,7 +5,6 @@ set(CMAKE_CXX_STANDARD 20)
 
 find_package(Vulkan REQUIRED)
 
-# Verify the path to glfw3.lib
 if (WIN32)
     if(NOT EXISTS "${CMAKE_SOURCE_DIR}/libs/glfw")
         message(FATAL_ERROR "Missing ${CMAKE_SOURCE_DIR}/libs/glfw")

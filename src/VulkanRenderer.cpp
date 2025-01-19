@@ -9,14 +9,14 @@
 
 const auto requiredExtensions = std::vector{VK_KHR_SWAPCHAIN_EXTENSION_NAME};
 
-VkSurfaceKHR createSurface(VkInstance instance, GLFWwindow *window) {
+VkSurfaceKHR createSurface(VkInstance instance, GLFWwindow* window) {
     VkSurfaceKHR surface;
     VK_CHECK(glfwCreateWindowSurface(instance, window, nullptr, &surface));
     return surface;
 }
 
-std::vector<const char *> getExtensions() {
-    auto extensions = std::vector<const char *>();
+std::vector<const char*> getExtensions() {
+    auto extensions = std::vector<const char*>();
     uint32_t glfwExtensionsCount;
     auto glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionsCount);
 
@@ -58,7 +58,7 @@ VkInstance createInstance() {
     return instance;
 }
 
-VulkanRenderer VulkanRenderer::create(GLFWwindow *window) {
+VulkanRenderer VulkanRenderer::create(GLFWwindow* window) {
     auto instance = createInstance();
     auto surface = createSurface(instance, window);
     auto [device, queues, swapChainDetails] = getDeviceAndDetails(instance, surface);
@@ -67,7 +67,7 @@ VulkanRenderer VulkanRenderer::create(GLFWwindow *window) {
     };
 }
 
-VkQueue getGraphicsQueue(VkDevice device, int graphicsFamilyIdx) {
+VkQueue getGraphicsQueue(const VkDevice device, const int graphicsFamilyIdx) {
     VkQueue graphicsQueue;
     vkGetDeviceQueue(device, graphicsFamilyIdx, 0, &graphicsQueue);
     return graphicsQueue;
@@ -79,7 +79,7 @@ VkQueue getPresentQueue(const VkDevice device, const int presentFamilyIdx) {
     return presentQueue;
 }
 
-VulkanRenderer::VulkanRenderer(const GLFWwindow *window, const VkInstance instance, const Device device,
+VulkanRenderer::VulkanRenderer(const GLFWwindow* window, const VkInstance instance, const Device device,
                                const QueueFamilyIndices queues, const VkSurfaceKHR surface)
     : window(window), instance(instance), device(device), queues(queues), surface(surface),
       graphicsQueue(getGraphicsQueue(device.logicalDevice, queues.graphicsFamily)),
@@ -92,7 +92,7 @@ VulkanRenderer::~VulkanRenderer() {
     vkDestroySurfaceKHR(instance, surface, nullptr);
 }
 
-VkPhysicalDevice VulkanRenderer::getPhysicalDevice(VkInstance instance, VkSurfaceKHR surfaceTuSupport) {
+VkPhysicalDevice VulkanRenderer::getPhysicalDevice(const VkInstance instance, const VkSurfaceKHR surfaceTuSupport) {
     std::vector<VkPhysicalDevice> devices;
     uint32_t deviceCount = 0;
     vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
@@ -102,7 +102,7 @@ VkPhysicalDevice VulkanRenderer::getPhysicalDevice(VkInstance instance, VkSurfac
     devices.resize(deviceCount);
     vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
 
-    for (const auto &device: devices) {
+    for (const auto& device : devices) {
         if (isDeviceSuitable(device, surfaceTuSupport)) {
             return device;
         }
@@ -113,7 +113,7 @@ VkPhysicalDevice VulkanRenderer::getPhysicalDevice(VkInstance instance, VkSurfac
 
 std::vector<VkDeviceQueueCreateInfo> VulkanRenderer::getQueueCreateInfos(const QueueFamilyIndices queues) {
     std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
-    for (std::set uniqueQueueFamilies = {queues.graphicsFamily, queues.presentFamily}; auto idx: uniqueQueueFamilies) {
+    for (std::set uniqueQueueFamilies = {queues.graphicsFamily, queues.presentFamily}; auto idx : uniqueQueueFamilies) {
         VkDeviceQueueCreateInfo queueCreateInfo = {};
         queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
         queueCreateInfo.queueFamilyIndex = idx;
@@ -125,7 +125,7 @@ std::vector<VkDeviceQueueCreateInfo> VulkanRenderer::getQueueCreateInfos(const Q
     return queueCreateInfos;
 }
 
-std::vector<VkExtensionProperties> getAvailableExtensions(VkPhysicalDevice device) {
+std::vector<VkExtensionProperties> getAvailableExtensions(const VkPhysicalDevice device) {
     uint32_t extensionCount;
     vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr);
     auto availableExtensions = std::vector<VkExtensionProperties>(extensionCount);
@@ -133,7 +133,7 @@ std::vector<VkExtensionProperties> getAvailableExtensions(VkPhysicalDevice devic
     return availableExtensions;
 }
 
-VkDevice VulkanRenderer::createLogicalDevice(VkPhysicalDevice physicalDevice, const QueueFamilyIndices queues) {
+VkDevice VulkanRenderer::createLogicalDevice(const VkPhysicalDevice physicalDevice, const QueueFamilyIndices queues) {
     const auto queueCreateInfos = getQueueCreateInfos(queues);
     const auto extensions = getAvailableExtensions(physicalDevice);
 
@@ -165,7 +165,9 @@ VulkanRenderer::getDeviceAndDetails(
     return {device, queues, swapChainDetails};
 }
 
-VulkanRenderer::SwapChainDetails VulkanRenderer::getSwapChainDetails(VkPhysicalDevice device, VkSurfaceKHR surface) {
+VulkanRenderer::SwapChainDetails VulkanRenderer::getSwapChainDetails(
+    const VkPhysicalDevice device, const VkSurfaceKHR surface
+) {
     SwapChainDetails details;
     vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &details.surfaceCapabilities);
 
@@ -186,8 +188,9 @@ VulkanRenderer::SwapChainDetails VulkanRenderer::getSwapChainDetails(VkPhysicalD
     return details;
 }
 
-VulkanRenderer::QueueFamilyIndices VulkanRenderer::getQueueFamilies(VkPhysicalDevice device,
-                                                                    VkSurfaceKHR surfaceTuSupport) {
+VulkanRenderer::QueueFamilyIndices VulkanRenderer::getQueueFamilies(
+    const VkPhysicalDevice device, const VkSurfaceKHR surfaceTuSupport
+) {
     QueueFamilyIndices indices;
     auto queueFamilyCount = 0u;
     vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
@@ -210,10 +213,10 @@ VulkanRenderer::QueueFamilyIndices VulkanRenderer::getQueueFamilies(VkPhysicalDe
     return indices;
 }
 
-bool hasAllRequiredExtensions(const std::vector<VkExtensionProperties> &availableExtensions) {
-    for (const auto &requiredExtension: requiredExtensions) {
-        bool found = false;
-        for (const auto &availableExtension: availableExtensions) {
+bool hasAllRequiredExtensions(const std::vector<VkExtensionProperties>& availableExtensions) {
+    for (const auto& requiredExtension : requiredExtensions) {
+        auto found = false;
+        for (const auto& availableExtension : availableExtensions) {
             if (strcmp(availableExtension.extensionName, requiredExtension) == 0) {
                 found = true;
                 break;
@@ -226,8 +229,8 @@ bool hasAllRequiredExtensions(const std::vector<VkExtensionProperties> &availabl
     return true;
 }
 
-bool VulkanRenderer::isDeviceSuitable(VkPhysicalDevice device, VkSurfaceKHR surfaceTuSupport) {
+bool VulkanRenderer::isDeviceSuitable(const VkPhysicalDevice device, const VkSurfaceKHR surfaceTuSupport) {
     return getQueueFamilies(device, surfaceTuSupport).isValid()
-           && hasAllRequiredExtensions(getAvailableExtensions(device))
-           && getSwapChainDetails(device, surfaceTuSupport).isValid();
+        && hasAllRequiredExtensions(getAvailableExtensions(device))
+        && getSwapChainDetails(device, surfaceTuSupport).isValid();
 }
