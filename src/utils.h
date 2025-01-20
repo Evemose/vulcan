@@ -1,6 +1,8 @@
 #pragma once
+// ReSharper disable once CppUnusedIncludeDirective
 #include <stdexcept>   // For std::runtime_error
 #include <string>      // For std::to_string
+#include <vector>
 
 // Usage example:
 //    VK_CHECK(vkCreateInstance(&createInfo, nullptr, &instance));
@@ -19,3 +21,5 @@ std::to_string(result));                                             \
 }                                                                            \
 } while(0)
 #endif
+
+static std::vector<char> readFile(const std::string &filename);

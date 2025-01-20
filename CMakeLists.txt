@@ -21,7 +21,8 @@ add_executable(foobar
         src/VulkanRenderer.h
         src/utils.h
         src/swapchain_choices.h
-        src/swapchain_choices.cpp)
+        src/swapchain_choices.cpp
+        src/utils.cpp)
 
 add_custom_command(
         TARGET foobar PRE_BUILD

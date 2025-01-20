@@ -79,6 +79,10 @@ private:
     static VkImageView createImageView(VkDevice vkDevice, VkImage image, VkFormat format, VkImageAspectFlagBits vkImageAspectFlagBits);
 
     static SwapChainAndMetadata createSwapChain(Device device, VkSurfaceKHR surface, GLFWwindow *window);
+
+    VkRenderPass createRenderPass(VkDevice device, const SwapChainAndMetadata &swapChainAndMetadata);
+
+    static VkPipeline createGraphicsPipeline(VkDevice device, const SwapChainAndMetadata& swapChainAndMetadata);
 };
 
 

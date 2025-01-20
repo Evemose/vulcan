@@ -8,8 +8,6 @@
 
 #include "VulkanRenderer.h"
 
-;
-
 GLFWwindow* createWindow(const std::string &name = "Test Window", const int width = 800, const int height = 600) {
     glfwInit();
 
