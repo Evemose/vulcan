@@ -67,8 +67,10 @@ VulkanRenderer VulkanRenderer::create(GLFWwindow* window) {
     auto surface = createSurface(instance, window);
     auto [device, queues, swapChainDetails] = getDeviceAndDetails(instance, surface);
     auto swapChainAndMeta = createSwapChain(device, surface, window);
+    auto renderPass = createRenderPass(device.logicalDevice, swapChainAndMeta);
+    auto graphicsPipeline = createGraphicsPipeline(device.logicalDevice, swapChainAndMeta, renderPass);
     return {
-        window, instance, device, queues, surface, swapChainAndMeta
+        window, instance, device, queues, surface, swapChainAndMeta, renderPass, graphicsPipeline
     };
 }
 
@@ -86,14 +88,17 @@ VkQueue getPresentQueue(const VkDevice device, const int presentFamilyIdx) {
 
 VulkanRenderer::VulkanRenderer(
     const GLFWwindow* window, VkInstance instance, Device device, QueueFamilyIndices queues,
-    VkSurfaceKHR surface, SwapChainAndMetadata swapChainAndMetadata
+    VkSurfaceKHR surface, SwapChainAndMetadata swapChainAndMetadata,
+    VkRenderPass renderPass, VkPipeline graphicsPipeline
 ): window(window), instance(instance), device(device), queues(queues), surface(surface),
    graphicsQueue(getGraphicsQueue(device.logicalDevice, queues.graphicsFamily)),
    presentQueue(getPresentQueue(device.logicalDevice, queues.presentFamily)),
-   swapChainAndMetadata(std::move(swapChainAndMetadata)) {
+   swapChainAndMetadata(std::move(swapChainAndMetadata)), renderPass(renderPass), graphicsPipeline(graphicsPipeline) {
 }
 
 VulkanRenderer::~VulkanRenderer() {
+    vkDestroyPipeline(device.logicalDevice, graphicsPipeline, nullptr);
+    vkDestroyRenderPass(device.logicalDevice, renderPass, nullptr);
     for (const auto& swapChainImage : swapChainAndMetadata.swapChainImages) {
         vkDestroyImageView(device.logicalDevice, swapChainImage.imageView, nullptr);
     }
@@ -343,7 +348,6 @@ VkShaderModule createShaderModule(VkDevice device, const std::vector<char>& code
 }
 
 VkRenderPass VulkanRenderer::createRenderPass(VkDevice device, const SwapChainAndMetadata& swapChainAndMetadata) {
-
     VkAttachmentDescription colorAttachment = {};
     colorAttachment.format = swapChainAndMetadata.swapChainImageFormat;
     colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
@@ -370,6 +374,15 @@ VkRenderPass VulkanRenderer::createRenderPass(VkDevice device, const SwapChainAn
     dependencies[0].dstSubpass = 0;
     dependencies[0].dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
     dependencies[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    dependencies[0].dependencyFlags = 0;
+
+    dependencies[1].srcSubpass = 0;
+    dependencies[1].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    dependencies[1].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    dependencies[1].dstSubpass = VK_SUBPASS_EXTERNAL;
+    dependencies[1].dstStageMask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+    dependencies[1].dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+    dependencies[1].dependencyFlags = 0;
 
     VkRenderPassCreateInfo renderPassInfo = {};
     renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
@@ -377,11 +390,17 @@ VkRenderPass VulkanRenderer::createRenderPass(VkDevice device, const SwapChainAn
     renderPassInfo.pAttachments = &colorAttachment;
     renderPassInfo.subpassCount = 1;
     renderPassInfo.pSubpasses = &subpass;
+    renderPassInfo.dependencyCount = static_cast<uint32_t>(dependencies.size());
+    renderPassInfo.pDependencies = dependencies.data();
+
+    VkRenderPass renderPass;
+    VK_CHECK(vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass));
+    return renderPass;
 }
 
-VkPipeline VulkanRenderer::createGraphicsPipeline(VkDevice device, const SwapChainAndMetadata& swapChainAndMetadata) {
-    auto vertexCode = readFile("build/shader.vert.spv");
-    auto fragmentCode = readFile("build/shader.frag.spv");
+VkPipeline VulkanRenderer::createGraphicsPipeline(VkDevice device, const SwapChainAndMetadata& swapChainAndMetadata, VkRenderPass renderPass) {
+    auto vertexCode = readFile("/home/customdev010/vulcan/firstapp/build/shader.vert.spv");
+    auto fragmentCode = readFile("/home/customdev010/vulcan/firstapp/build/shader.frag.spv");
 
     auto vertexModule = createShaderModule(device, vertexCode);
     auto fragmentModule = createShaderModule(device, fragmentCode);
@@ -472,6 +491,27 @@ VkPipeline VulkanRenderer::createGraphicsPipeline(VkDevice device, const SwapCha
     VkPipelineLayout pipelineLayout;
     VK_CHECK(vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &pipelineLayout));
 
+    VkGraphicsPipelineCreateInfo pipelineInfo = {};
+    pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+    pipelineInfo.stageCount = 2;
+    pipelineInfo.pStages = shaderStages;
+    pipelineInfo.pVertexInputState = &vertexInputInfo;
+    pipelineInfo.pInputAssemblyState = &inputAssembly;
+    pipelineInfo.pViewportState = &viewportState;
+    pipelineInfo.pRasterizationState = &rasterizer;
+    pipelineInfo.pMultisampleState = &multisampling;
+    pipelineInfo.pColorBlendState = &colorBlending;
+    pipelineInfo.layout = pipelineLayout;
+    pipelineInfo.renderPass = renderPass;
+    pipelineInfo.subpass = 0;
+    pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
+    pipelineInfo.basePipelineIndex = -1;
+
+    VkPipeline graphicsPipeline;
+    VK_CHECK(vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline));
+
     vkDestroyShaderModule(device, vertexModule, nullptr);
     vkDestroyShaderModule(device, fragmentModule, nullptr);
+
+    return graphicsPipeline;
 }

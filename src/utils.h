@@ -1,8 +1,9 @@
 #pragma once
 // ReSharper disable once CppUnusedIncludeDirective
-#include <stdexcept>   // For std::runtime_error
-#include <string>      // For std::to_string
+#include <stdexcept>
+#include <string>
 #include <vector>
+#include <fstream>
 
 // Usage example:
 //    VK_CHECK(vkCreateInstance(&createInfo, nullptr, &instance));
@@ -22,4 +23,14 @@ std::to_string(result));                                             \
 } while(0)
 #endif
 
-static std::vector<char> readFile(const std::string &filename);
+static std::vector<char> readFile(const std::string &filename) {
+    std::ifstream file(filename, std::ios::ate | std::ios::binary);
+    if (!file.is_open()) {
+        throw std::runtime_error("Failed to open file: " + filename);
+    }
+    std::vector<char> buffer(file.tellg());
+    file.seekg(0);
+    file.read(buffer.data(), static_cast<long>(buffer.size()));
+    file.close();
+    return buffer;
+}

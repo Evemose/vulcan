@@ -58,9 +58,12 @@ private:
     const VkQueue graphicsQueue;
     const VkQueue presentQueue;
     const SwapChainAndMetadata swapChainAndMetadata;
+    const VkRenderPass renderPass;
+    const VkPipeline graphicsPipeline;
 
     VulkanRenderer(const GLFWwindow *window, VkInstance instance, Device device, QueueFamilyIndices queues,
-                   VkSurfaceKHR surface, SwapChainAndMetadata  swapChainAndMetadata);
+                   VkSurfaceKHR surface, SwapChainAndMetadata  swapChainAndMetadata, VkRenderPass renderPass,
+                   VkPipeline graphicsPipeline);
 
     static VkPhysicalDevice getPhysicalDevice(VkInstance instance, VkSurfaceKHR surfaceTuSupport);
 
@@ -80,9 +83,9 @@ private:
 
     static SwapChainAndMetadata createSwapChain(Device device, VkSurfaceKHR surface, GLFWwindow *window);
 
-    VkRenderPass createRenderPass(VkDevice device, const SwapChainAndMetadata &swapChainAndMetadata);
+    static VkRenderPass createRenderPass(VkDevice device, const SwapChainAndMetadata &swapChainAndMetadata);
 
-    static VkPipeline createGraphicsPipeline(VkDevice device, const SwapChainAndMetadata& swapChainAndMetadata);
+    static VkPipeline createGraphicsPipeline(VkDevice device, const SwapChainAndMetadata& swapChainAndMetadata, VkRenderPass renderPass);
 };
 
 
