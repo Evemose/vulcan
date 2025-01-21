@@ -21,8 +21,10 @@ int main() {
     GLFWwindow* window = createWindow();
     auto renderer = VulkanRenderer::create(window);
 
+
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
+        renderer.drawFrame();
     }
 
     glfwDestroyWindow(window);
