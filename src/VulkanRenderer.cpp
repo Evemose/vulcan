@@ -126,7 +126,7 @@ void VulkanRenderer::recordCommand(uint32_t imageIndex) const {
     renderPassInfo.renderArea.extent = swapChainAndMetadata.swapChainExtent;
 
     VkClearValue clearValues[] = {
-        {0.0f, 0.0f, 0.0f, 1.0f}
+        {0.6f, 0.65f, 0.6f, 1.0f}
     };
     renderPassInfo.clearValueCount = 1;
     renderPassInfo.pClearValues = clearValues;
@@ -212,6 +212,7 @@ VulkanRenderer::VulkanRenderer(
 }
 
 VulkanRenderer::~VulkanRenderer() {
+    vkDeviceWaitIdle(device.logicalDevice);
     for (const auto &fence: inFlightFences) {
         vkDestroyFence(device.logicalDevice, fence, nullptr);
     }
