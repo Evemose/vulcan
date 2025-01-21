@@ -24,10 +24,13 @@ add_executable(foobar
         src/utils.h
 )
 
-add_custom_command(
-        TARGET foobar PRE_BUILD
+add_custom_target(CompileShaders ALL
         COMMAND ${CMAKE_COMMAND} -E env python3 ${CMAKE_SOURCE_DIR}/buildscripts/compile-shaders.py
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        COMMENT "Compiling shaders..."
 )
+
+add_dependencies(foobar CompileShaders)
 
 target_sources(foobar PRIVATE src/main.cpp)
 

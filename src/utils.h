@@ -35,7 +35,7 @@ static std::vector<char> readFile(const std::string &filename) {
     return buffer;
 }
 
-const std::string GLSL_RESOURCE_PREFIX = "../build/";
+const std::string GLSL_RESOURCE_PREFIX = "../build/shaders/";
 
 static std::vector<char> readGlslResource(const std::string &resourceName) {
     return readFile(GLSL_RESOURCE_PREFIX + resourceName + ".spv");
