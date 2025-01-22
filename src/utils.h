@@ -4,12 +4,7 @@
 #include <string>
 #include <vector>
 #include <fstream>
-
-// Usage example:
-//    VK_CHECK(vkCreateInstance(&createInfo, nullptr, &instance));
-//
-// If vkCreateInstance does not return VK_SUCCESS, the macro throws
-// std::runtime_error with an error message.
+#include <glm/glm.hpp>
 
 #ifndef VK_CHECK
 #define VK_CHECK(f)                                                                  \
@@ -40,3 +35,7 @@ const std::string GLSL_RESOURCE_PREFIX = "../build/shaders/";
 static std::vector<char> readGlslResource(const std::string &resourceName) {
     return readFile(GLSL_RESOURCE_PREFIX + resourceName + ".spv");
 }
+
+typedef struct {
+    glm::vec3 pos;
+} Vertex;

@@ -2,9 +2,13 @@
 #define VULKARENDERER_H
 
 #define GLFW_INCLUDE_VULKAN
+#include <memory>
 #include <tuple>
 #include <GLFW/glfw3.h>
 #include <vector>
+
+#include "Mesh.h"
+#include "utils.h"
 
 class VulkanRenderer {
 public:
@@ -14,7 +18,7 @@ public:
 
     void submitCommand(uint32_t imageIndex);
 
-    void drawFrame();
+    void drawFrame(const std::vector<Vertex>& vertices);
 
     ~VulkanRenderer();
 
@@ -77,6 +81,7 @@ private:
     const std::vector<VkFence> inFlightFences;
 
     int currentFrame = 0;
+    std::unique_ptr<Mesh> currentMesh;
 
     VulkanRenderer(
         const GLFWwindow *window, VkInstance instance, Device device, QueueFamilyIndices queues,

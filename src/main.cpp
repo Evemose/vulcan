@@ -24,7 +24,12 @@ int main() {
 
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
-        renderer.drawFrame();
+        renderer.drawFrame({
+            {{0.5f, 0.5f, 0.0f}},
+            {{0.5f, -0.5f, 0.0f}},
+            {{-0.5f, -0.5f, 0.0f}},
+            {{-0.5f, 0.5f, 0.0f}}
+        });
     }
 
     glfwDestroyWindow(window);

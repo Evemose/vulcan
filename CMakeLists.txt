@@ -22,6 +22,8 @@ add_executable(foobar
         src/swapchain_choices.h
         src/swapchain_choices.cpp
         src/utils.h
+        src/Mesh.cpp
+        src/Mesh.h
 )
 
 add_custom_target(CompileShaders ALL

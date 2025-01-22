@@ -2,10 +2,10 @@
 
 #include <algorithm>
 #include <cstring>
+#include <memory>
 #include <ranges>
 #include <set>
 
-#include "utils.h"
 #include <stdexcept>
 #include <tuple>
 #include <utility>
@@ -135,7 +135,10 @@ void VulkanRenderer::recordCommand(uint32_t imageIndex) const {
 
     vkCmdBeginRenderPass(commandBuffers[imageIndex], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
     vkCmdBindPipeline(commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
-    vkCmdDraw(commandBuffers[imageIndex], 3, 1, 0, 0);
+    VkBuffer vertexBuffers[] = {currentMesh.getVertexBuffer()};
+    VkDeviceSize offsets[] = { 0 };
+    vkCmdBindVertexBuffers(commandBuffers[imageIndex], 0, 1, vertexBuffers, offsets);
+    vkCmdDraw(commandBuffers[imageIndex], currentMesh.getVertexCount(), 1, 0, 0);
     vkCmdEndRenderPass(commandBuffers[imageIndex]);
 
     VK_CHECK(vkEndCommandBuffer(commandBuffers[imageIndex]));
@@ -169,7 +172,7 @@ void VulkanRenderer::submitCommand(uint32_t imageIndex) {
     currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 
-void VulkanRenderer::drawFrame() {
+void VulkanRenderer::drawFrame(const std::vector<Vertex>& vertices) {
     vkWaitForFences(device.logicalDevice, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
     vkResetFences(device.logicalDevice, 1, &inFlightFences[currentFrame]);
 
@@ -177,7 +180,8 @@ void VulkanRenderer::drawFrame() {
     vkAcquireNextImageKHR(device.logicalDevice, swapChainAndMetadata.swapChain, UINT64_MAX,
                           imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
     vkResetCommandBuffer(commandBuffers[imageIndex], 0);
-    
+
+    currentMesh = std::unique_ptr<Mesh>(Mesh::create(device.physicalDevice, device.logicalDevice, vertices));
     recordCommand(imageIndex);
     submitCommand(imageIndex);
 }
@@ -567,12 +571,22 @@ std::tuple<VkPipeline, VkPipelineLayout> VulkanRenderer::createGraphicsPipeline(
 
     VkPipelineShaderStageCreateInfo shaderStages[] = {vertexStageInfo, fragmentStageInfo};
 
+    VkVertexInputBindingDescription bindingDescription = {};
+    bindingDescription.binding = 0;
+    bindingDescription.stride = sizeof(Vertex);
+    bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+    std::array<VkVertexInputAttributeDescription, 1> attributeDescriptions = {};
+    attributeDescriptions[0].binding = 0;
+    attributeDescriptions[0].location = 0;
+    attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
+    attributeDescriptions[0].offset = offsetof(Vertex, pos);
+
     VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
     vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-    vertexInputInfo.vertexBindingDescriptionCount = 0;
-    vertexInputInfo.pVertexBindingDescriptions = nullptr;
-    vertexInputInfo.vertexAttributeDescriptionCount = 0;
-    vertexInputInfo.pVertexAttributeDescriptions = nullptr;
+    vertexInputInfo.vertexBindingDescriptionCount = 1;
+    vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
+    vertexInputInfo.vertexAttributeDescriptionCount = attributeDescriptions.size();
+    vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
 
     VkPipelineInputAssemblyStateCreateInfo inputAssembly = {};
     inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
