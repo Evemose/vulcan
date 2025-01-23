@@ -138,7 +138,8 @@ void VulkanRenderer::recordCommand(uint32_t imageIndex, const Mesh &mesh) const 
     VkBuffer vertexBuffers[] = {mesh.getVertexBuffer()};
     VkDeviceSize offsets[] = { 0 };
     vkCmdBindVertexBuffers(commandBuffers[imageIndex], 0, 1, vertexBuffers, offsets);
-    vkCmdDraw(commandBuffers[imageIndex], mesh.getVertexCount(), 1, 0, 0);
+    vkCmdBindIndexBuffer(commandBuffers[imageIndex], mesh.getIndexBuffer(), 0, VK_INDEX_TYPE_UINT32);
+    vkCmdDrawIndexed(commandBuffers[imageIndex], mesh.getIndexCount(), 1, 0, 0, 0);
     vkCmdEndRenderPass(commandBuffers[imageIndex]);
 
     VK_CHECK(vkEndCommandBuffer(commandBuffers[imageIndex]));
@@ -189,9 +190,9 @@ MeshFactory VulkanRenderer::getMeshFactory() const {
     return meshFactory;
 }
 
-VkQueue getGraphicsQueue(const VkDevice device, const int graphicsFamilyIdx) {
+VkQueue getQueue(const VkDevice device, const int queueIdx) {
     VkQueue graphicsQueue;
-    vkGetDeviceQueue(device, graphicsFamilyIdx, 0, &graphicsQueue);
+    vkGetDeviceQueue(device, queueIdx, 0, &graphicsQueue);
     return graphicsQueue;
 }
 
@@ -209,13 +210,13 @@ VulkanRenderer::VulkanRenderer(
     std::vector<VkCommandBuffer> commandBuffers, std::vector<VkSemaphore> imageAvailableSemaphore,
     std::vector<VkSemaphore> renderFinishedSemaphore, std::vector<VkFence> inFlightFences
 ): window(window), instance(instance), device(device), queues(queues), surface(surface),
-   graphicsQueue(getGraphicsQueue(device.logicalDevice, queues.graphicsFamily)),
+   graphicsQueue(getQueue(device.logicalDevice, queues.graphicsFamily)),
    presentQueue(getPresentQueue(device.logicalDevice, queues.presentFamily)),
    swapChainAndMetadata(std::move(swapChainAndMetadata)), renderPass(renderPass), graphicsPipeline(graphicsPipeline),
    pipelineLayout(pipelineLayout), swapChainFramebuffers(std::move(swapChainFramebuffers)), commandPool(commandPool),
    commandBuffers(std::move(commandBuffers)), imageAvailableSemaphores(std::move(imageAvailableSemaphore)),
    renderFinishedSemaphores(std::move(renderFinishedSemaphore)), inFlightFences(std::move(inFlightFences)),
-   meshFactory({device.physicalDevice, device.logicalDevice}) {
+   meshFactory({device.physicalDevice, device.logicalDevice, commandPool, getQueue(device.logicalDevice, queues.graphicsFamily)}) {
 }
 
 VulkanRenderer::~VulkanRenderer() {

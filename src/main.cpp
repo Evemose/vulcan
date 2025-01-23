@@ -38,15 +38,15 @@ int main() {
     auto secondColor = randomColor();
     auto thirdColor = randomColor();
     auto fourthColor = randomColor();
-    auto mesh = meshFactory.createMesh({
-        {{-0.5f, -0.5f, 0.0f}, firstColor}, // First triangle
+    std::vector<Vertex> vertices = {
+        {{-0.5f, -0.5f, 0.0f}, firstColor},
         {{0.5f, -0.5f, 0.0f}, secondColor},
         {{0.5f, 0.5f, 0.0f}, thirdColor},
-
-        {{-0.5f, -0.5f, 0.0f}, firstColor}, // Second triangle
-        {{0.5f, 0.5f, 0.0f}, thirdColor},
         {{-0.5f, 0.5f, 0.0f}, fourthColor},
-    });
+    };
+    std::vector<uint32_t> indices = {0, 1, 2, 0, 2, 3};
+
+    auto mesh = meshFactory.createMesh(vertices, indices);
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
         renderer.drawFrame(*mesh);

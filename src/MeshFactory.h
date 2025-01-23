@@ -8,11 +8,13 @@
 
 class MeshFactory {
 public:
-    MeshFactory(VkPhysicalDevice physicalDevice, VkDevice device);
-    [[nodiscard]] std::unique_ptr<Mesh> createMesh(const std::vector<Vertex> &vertices) const;
+    MeshFactory(VkPhysicalDevice physicalDevice, VkDevice device, VkCommandPool commandPool, VkQueue transferQueue);
+    [[nodiscard]] std::unique_ptr<Mesh> createMesh(const std::vector<Vertex> &vertices, const std::vector<uint32_t> &indices) const;
 private:
     const VkPhysicalDevice physicalDevice;
     const VkDevice device;
+    const VkCommandPool commandPool;
+    const VkQueue transferQueue;
 };
 
 

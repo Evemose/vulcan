@@ -1,97 +1,106 @@
 #include "Mesh.h"
 
-#include <cstring>
-
-Mesh::Mesh(VkPhysicalDevice physicalDevice, VkDevice device, const std::vector<Vertex> &vertices, VkBuffer vertexBuffer,
-           VkDeviceMemory vertexBufferMemory)
-    : vertexCount(static_cast<int>(vertices.size())),
-      physicalDevice(physicalDevice),
-      device(device),
-      vertexBuffer(vertexBuffer),
-      vertexBufferMemory(vertexBufferMemory) {
+Mesh::Mesh(VkDevice device, Buffer &vertexBuffer, Buffer &indexBuffer): device(device) {
+    this->vertexBuffer = std::move(vertexBuffer);
+    this->indexBuffer = std::move(indexBuffer);
 }
 
 int Mesh::getVertexCount() const {
-    return vertexCount;
+    return vertexBuffer.elementCount;
 }
 
 VkBuffer Mesh::getVertexBuffer() const {
-    return vertexBuffer;
+    return vertexBuffer.buffer;
 }
 
 VkDeviceMemory Mesh::getVertexBufferMemory() const {
-    return vertexBufferMemory;
+    return vertexBuffer.memory;
 }
 
 Mesh::~Mesh() {
-    vkDestroyBuffer(device, vertexBuffer, nullptr);
-    vkFreeMemory(device, vertexBufferMemory, nullptr);
+    vertexBuffer.cleanup(device);
+    indexBuffer.cleanup(device);
 }
 
-Mesh Mesh::create(const std::vector<Vertex> &vertices, VkDevice device, VkPhysicalDevice physicalDevice) {
-    const auto [buffer, memory] = createVertexBuffer(vertices, device, physicalDevice);
+VkBuffer Mesh::getIndexBuffer() const {
+    return indexBuffer.buffer;
+}
+
+uint32_t Mesh::getIndexCount() const {
+    return indexBuffer.elementCount;
+}
+
+Mesh::Buffer Mesh::createVertexBuffer(
+    const std::vector<Vertex> &vertices, VkDevice device,
+    VkPhysicalDevice physicalDevice,
+    VkCommandPool commandPool, VkQueue transferQueue
+) {
+    const auto [srcBuffer, srcMem] = createBuffer(
+        device,
+        physicalDevice,
+        sizeof(Vertex) * vertices.size(),
+        VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+    );
+    fillBuffer(device, srcMem, sizeof(Vertex) * vertices.size(), vertices.data());
+
+    const auto [dstBuffer, dstMem] = createBuffer(
+        device,
+        physicalDevice,
+        sizeof(Vertex) * vertices.size(),
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+    );
+
+    copyBuffer(device, commandPool, transferQueue, srcBuffer, dstBuffer, sizeof(Vertex) * vertices.size());
+
+    vkDestroyBuffer(device, srcBuffer, nullptr);
+    vkFreeMemory(device, srcMem, nullptr);
+
+    return {static_cast<int>(vertices.size()), dstBuffer, dstMem};
+}
+
+Mesh::Buffer Mesh::createIndexBuffer(const std::vector<uint32_t> &indices, VkDevice device,
+                                     VkPhysicalDevice physicalDevice, VkCommandPool commandPool,
+                                     VkQueue transferQueue) {
+    const auto [srcBuffer, srcMem] = createBuffer(
+        device,
+        physicalDevice,
+        sizeof(uint32_t) * indices.size(),
+        VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+    );
+    fillBuffer(device, srcMem, sizeof(uint32_t) * indices.size(), indices.data());
+
+    const auto [dstBuffer, dstMem] = createBuffer(
+        device,
+        physicalDevice,
+        sizeof(uint32_t) * indices.size(),
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+    );
+
+    copyBuffer(device, commandPool, transferQueue, srcBuffer, dstBuffer, sizeof(uint32_t) * indices.size());
+    vkDestroyBuffer(device, srcBuffer, nullptr);
+    vkFreeMemory(device, srcMem, nullptr);
+
+    return {static_cast<int>(indices.size()), dstBuffer, dstMem};
+}
+
+Mesh Mesh::create(
+    const std::vector<Vertex> &vertices, const std::vector<uint32_t> &indices,
+    VkDevice device, VkPhysicalDevice physicalDevice, VkCommandPool commandPool, VkQueue transferQueue
+) {
+    auto vertexBuffer = createVertexBuffer(vertices, device, physicalDevice, commandPool, transferQueue);
+    auto indexBuffer = createIndexBuffer(indices, device, physicalDevice, commandPool, transferQueue);
+
     return {
-        physicalDevice, device, vertices, buffer, memory
+        device, vertexBuffer, indexBuffer
     };
 }
 
-Mesh::Mesh(Mesh && other) noexcept {
-    vertexCount = other.vertexCount;
-    physicalDevice = other.physicalDevice;
-    device = other.device;
-    vertexBuffer = other.vertexBuffer;
-    vertexBufferMemory = other.vertexBufferMemory;
-
-    // Reset the other object
-    other.vertexBuffer = VK_NULL_HANDLE;
-    other.vertexBufferMemory = VK_NULL_HANDLE;
-}
-
-uint32_t findMemoryTypeIdx(VkPhysicalDevice physicalDevice, uint32_t memoryTypeBits, int flags) {
-    VkPhysicalDeviceMemoryProperties memProperties;
-    vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
-
-    for (auto i = 0; i < memProperties.memoryTypeCount; i++) {
-        if (memoryTypeBits & 1 << i && (memProperties.memoryTypes[i].propertyFlags & flags) == flags) {
-            return i;
-        }
-    }
-    throw std::runtime_error("Failed to find suitable memory type");
-}
-
-std::tuple<VkBuffer, VkDeviceMemory> Mesh::createVertexBuffer(
-    const std::vector<Vertex> &vertices, VkDevice device, VkPhysicalDevice physicalDevice
-) {
-    VkBufferCreateInfo bufferInfo = {};
-    bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    bufferInfo.size = sizeof(Vertex) * vertices.size();
-    bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-    bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-    VkBuffer vertexBuffer;
-    VK_CHECK(vkCreateBuffer(device, &bufferInfo, nullptr, &vertexBuffer));
-
-    VkMemoryRequirements memRequirements;
-    vkGetBufferMemoryRequirements(device, vertexBuffer, &memRequirements);
-
-    VkMemoryAllocateInfo allocInfo = {};
-    allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-    allocInfo.allocationSize = memRequirements.size;
-    allocInfo.memoryTypeIndex = findMemoryTypeIdx(
-        physicalDevice,
-        memRequirements.memoryTypeBits,
-        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
-    );
-
-    VkDeviceMemory vertexBufferMemory;
-    VK_CHECK(vkAllocateMemory(device, &allocInfo, nullptr, &vertexBufferMemory));
-
-    vkBindBufferMemory(device, vertexBuffer, vertexBufferMemory, 0);
-
-    void* mappedMemory;
-    vkMapMemory(device, vertexBufferMemory, 0, bufferInfo.size, 0, &mappedMemory);
-    memcpy(mappedMemory, vertices.data(), bufferInfo.size);
-    vkUnmapMemory(device, vertexBufferMemory);
-
-    return {vertexBuffer, vertexBufferMemory};
+Mesh::Mesh(Mesh &&other) noexcept {
+    this->device = other.device;
+    this->vertexBuffer = std::move(other.vertexBuffer);
+    this->indexBuffer = std::move(other.indexBuffer);
 }

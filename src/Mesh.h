@@ -17,22 +17,62 @@ public:
 
     ~Mesh();
 
-    static Mesh create(const std::vector<Vertex>& vertices, VkDevice device, VkPhysicalDevice physicalDevice);
+    [[nodiscard]] VkBuffer getIndexBuffer() const;
 
-    Mesh(const Mesh&) = delete;
+    [[nodiscard]] uint32_t getIndexCount() const;
 
-    Mesh(Mesh&& other) noexcept ;
+    static Mesh create(
+        const std::vector<Vertex> &vertices, const std::vector<uint32_t> &indices,
+        VkDevice device, VkPhysicalDevice physicalDevice, VkCommandPool commandPool,
+        VkQueue transferQueue
+    );
+
+    Mesh(const Mesh &) = delete;
+
+    Mesh(Mesh &&other) noexcept;
 
 private:
-    int vertexCount;
-    VkPhysicalDevice physicalDevice;
+    typedef struct Buffer {
+        int elementCount;
+        VkBuffer buffer;
+        VkDeviceMemory memory;
+
+        void cleanup(VkDevice device) const {
+            vkDestroyBuffer(device, buffer, nullptr);
+            vkFreeMemory(device, memory, nullptr);
+        }
+
+        void invalidate() {
+            elementCount = 0;
+            buffer = VK_NULL_HANDLE;
+            memory = VK_NULL_HANDLE;
+        }
+
+        Buffer &operator=(Buffer &&other) noexcept {
+            elementCount = other.elementCount;
+            buffer = other.buffer;
+            memory = other.memory;
+            other.invalidate();
+
+            return *this;
+        }
+    } Buffer;
+
     VkDevice device;
-    VkBuffer vertexBuffer;
-    VkDeviceMemory vertexBufferMemory;
+    Buffer vertexBuffer{};
+    Buffer indexBuffer{};
 
-    static std::tuple<VkBuffer, VkDeviceMemory> createVertexBuffer(const std::vector<Vertex> &vertices, VkDevice device, VkPhysicalDevice physicalDevice);
+    Mesh(VkDevice device, Buffer &vertexBuffer, Buffer &indexBuffer);
 
-    Mesh(VkPhysicalDevice physicalDevice, VkDevice device, const std::vector<Vertex>& vertices, VkBuffer vertexBuffer, VkDeviceMemory vertexBufferMemory);
+    static Buffer createVertexBuffer(
+        const std::vector<Vertex> &vertices, VkDevice device,
+        VkPhysicalDevice physicalDevice,
+        VkCommandPool commandPool, VkQueue transferQueue);
+
+    static Buffer createIndexBuffer(
+        const std::vector<uint32_t> &indices, VkDevice device,
+        VkPhysicalDevice physicalDevice,
+        VkCommandPool commandPool, VkQueue transferQueue);
 };
 
 
