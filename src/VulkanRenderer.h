@@ -15,11 +15,11 @@ class VulkanRenderer {
 public:
     static VulkanRenderer create(GLFWwindow *window);
 
-    void recordCommand(uint32_t imageIndex, const Mesh &mesh) const;
+    void recordCommand(uint32_t imageIndex, const std::vector<Mesh> &meshes) const;
 
     void submitCommand(uint32_t imageIndex);
 
-    void drawFrame(const Mesh &mesh);
+    void drawFrame(const std::vector<Mesh> &meshes);
 
     [[nodiscard]] MeshFactory getMeshFactory() const;
 

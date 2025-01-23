@@ -114,7 +114,7 @@ VulkanRenderer VulkanRenderer::create(GLFWwindow *window) {
     };
 }
 
-void VulkanRenderer::recordCommand(uint32_t imageIndex, const Mesh &mesh) const {
+void VulkanRenderer::recordCommand(uint32_t imageIndex, const std::vector<Mesh> &meshes) const {
     VkCommandBufferBeginInfo beginInfo = {};
     beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 
@@ -135,11 +135,13 @@ void VulkanRenderer::recordCommand(uint32_t imageIndex, const Mesh &mesh) const 
 
     vkCmdBeginRenderPass(commandBuffers[imageIndex], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
     vkCmdBindPipeline(commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
-    VkBuffer vertexBuffers[] = {mesh.getVertexBuffer()};
     VkDeviceSize offsets[] = { 0 };
-    vkCmdBindVertexBuffers(commandBuffers[imageIndex], 0, 1, vertexBuffers, offsets);
-    vkCmdBindIndexBuffer(commandBuffers[imageIndex], mesh.getIndexBuffer(), 0, VK_INDEX_TYPE_UINT32);
-    vkCmdDrawIndexed(commandBuffers[imageIndex], mesh.getIndexCount(), 1, 0, 0, 0);
+    for (const auto &mesh: meshes) {
+        VkBuffer vertexBuffers[] = {mesh.getVertexBuffer()};
+        vkCmdBindVertexBuffers(commandBuffers[imageIndex], 0, 1, vertexBuffers, offsets);
+        vkCmdBindIndexBuffer(commandBuffers[imageIndex], mesh.getIndexBuffer(), 0, VK_INDEX_TYPE_UINT32);
+        vkCmdDrawIndexed(commandBuffers[imageIndex], mesh.getIndexCount(), 1, 0, 0, 0);
+    }
     vkCmdEndRenderPass(commandBuffers[imageIndex]);
 
     VK_CHECK(vkEndCommandBuffer(commandBuffers[imageIndex]));
@@ -173,7 +175,7 @@ void VulkanRenderer::submitCommand(uint32_t imageIndex) {
     currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 
-void VulkanRenderer::drawFrame(const Mesh &mesh) {
+void VulkanRenderer::drawFrame(const std::vector<Mesh> &meshes) {
     vkWaitForFences(device.logicalDevice, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
     vkResetFences(device.logicalDevice, 1, &inFlightFences[currentFrame]);
 
@@ -182,7 +184,7 @@ void VulkanRenderer::drawFrame(const Mesh &mesh) {
                           imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
     vkResetCommandBuffer(commandBuffers[imageIndex], 0);
 
-    recordCommand(imageIndex, mesh);
+    recordCommand(imageIndex, meshes);
     submitCommand(imageIndex);
 }
 

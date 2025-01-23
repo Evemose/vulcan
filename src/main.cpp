@@ -38,18 +38,35 @@ int main() {
     auto secondColor = randomColor();
     auto thirdColor = randomColor();
     auto fourthColor = randomColor();
-    std::vector<Vertex> vertices = {
-        {{-0.5f, -0.5f, 0.0f}, firstColor},
-        {{0.5f, -0.5f, 0.0f}, secondColor},
-        {{0.5f, 0.5f, 0.0f}, thirdColor},
-        {{-0.5f, 0.5f, 0.0f}, fourthColor},
+
+    std::vector<Vertex> vertices1 = {
+        {{-0.6f, -0.5f, 0.0f}, firstColor},
+        {{-0.1f, -0.5f, 0.0f}, secondColor},
+        {{-0.1f, 0.5f, 0.0f}, thirdColor},
+        {{-0.6f, 0.5f, 0.0f}, fourthColor},
     };
+    std::vector<Vertex> vertices2 = {
+        {{0.1f, -0.5f, 0.0f}, firstColor},
+        {{0.6f, -0.5f, 0.0f}, secondColor},
+        {{0.6f, 0.5f, 0.0f}, thirdColor},
+        {{0.1f, 0.5f, 0.0f}, fourthColor},
+    };
+    std::vector<uint32_t> indices1 = {0, 1, 2, 0, 2, 3};
+    std::vector<uint32_t> indices2 = {0, 1, 2, 0, 2, 3};
+
     std::vector<uint32_t> indices = {0, 1, 2, 0, 2, 3};
 
-    auto mesh = meshFactory.createMesh(vertices, indices);
+    auto mesh1 = meshFactory.createMesh(vertices1, indices);
+    auto mesh2 = meshFactory.createMesh(vertices2, indices);
+
+    std::vector<Mesh> meshes;
+    meshes.reserve(2);
+    meshes.push_back(std::move(mesh1));
+    meshes.push_back(std::move(mesh2));
+
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
-        renderer.drawFrame(*mesh);
+        renderer.drawFrame(meshes);
     }
 
     glfwDestroyWindow(window);
