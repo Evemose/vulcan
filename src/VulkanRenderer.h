@@ -4,6 +4,7 @@
 #define GLFW_INCLUDE_VULKAN
 #include <memory>
 #include <tuple>
+#include <tuple>
 #include <GLFW/glfw3.h>
 #include <vector>
 
@@ -15,10 +16,6 @@ class VulkanRenderer {
 public:
     static VulkanRenderer create(GLFWwindow *window);
 
-    void recordCommand(uint32_t imageIndex, const std::vector<Mesh> &meshes) const;
-
-    void submitCommand(uint32_t imageIndex);
-
     void drawFrame(const std::vector<Mesh> &meshes);
 
     [[nodiscard]] MeshFactory getMeshFactory() const;
@@ -26,6 +23,12 @@ public:
     ~VulkanRenderer();
 
 private:
+    typedef struct MVP {
+        glm::mat4 projection;
+        glm::mat4 view;
+        glm::mat4 model;
+    } MVP;
+
     typedef struct {
         VkPhysicalDevice physicalDevice;
         VkDevice logicalDevice;
@@ -83,6 +86,11 @@ private:
     const std::vector<VkSemaphore> renderFinishedSemaphores;
     const std::vector<VkFence> inFlightFences;
     const MeshFactory meshFactory;
+    const VkDescriptorSetLayout descriptorSetLayout;
+    const std::vector<VkBuffer> uniformBuffers;
+    const std::vector<VkDeviceMemory> uniformBuffersMemory;
+    const VkDescriptorPool descriptorPool;
+    const std::vector<VkDescriptorSet> descriptorSets;
 
     int currentFrame = 0;
 
@@ -94,7 +102,9 @@ private:
         VkCommandPool graphicsPool, std::vector<VkCommandBuffer> commandBuffers,
         std::vector<VkSemaphore> imageAvailableSemaphore,
         std::vector<VkSemaphore> renderFinishedSemaphore,
-        std::vector<VkFence> inFlightFences
+        std::vector<VkFence> inFlightFences, VkDescriptorSetLayout descriptorSetLayout,
+        std::vector<VkBuffer> uniformBuffers, std::vector<VkDeviceMemory> uniformBuffersMemory,
+        VkDescriptorPool descriptorPool, std::vector<VkDescriptorSet> descriptorSets
     );
 
     static VkPhysicalDevice getPhysicalDevice(VkInstance instance, VkSurfaceKHR surfaceTuSupport);
@@ -120,13 +130,28 @@ private:
     static VkRenderPass createRenderPass(VkDevice device, const SwapChainAndMetadata &swapChainAndMetadata);
 
     static std::tuple<VkPipeline, VkPipelineLayout> createGraphicsPipeline(
-        VkDevice device, const SwapChainAndMetadata &swapChainAndMetadata, VkRenderPass renderPass);
+        VkDevice device, const SwapChainAndMetadata &swapChainAndMetadata, VkRenderPass renderPass,
+        VkDescriptorSetLayout
+        descriptorSetLayout);
 
     static std::vector<VkFramebuffer> createFramebuffers(VkDevice device,
                                                          const SwapChainAndMetadata &swapChainAndMetadata,
                                                          VkRenderPass renderPass);
 
-    static std::tuple<std::vector<VkSemaphore>, std::vector<VkSemaphore>, std::vector<VkFence>> createSync(VkDevice device);
+    static std::tuple<std::vector<VkSemaphore>, std::vector<VkSemaphore>, std::vector<VkFence> > createSync(
+        VkDevice device);
+
+    static std::tuple<std::vector<VkBuffer>, std::vector<VkDeviceMemory> > createUniformBuffers(
+        Device device, size_t buffersCount);
+
+    static std::vector<VkDescriptorSet> createDescriptorSets(
+        VkDevice vkDevice, VkDescriptorPool descriptorPool,
+        VkDescriptorSetLayout descriptorSetLayout,
+        const std::vector<VkBuffer> &buffers, size_t setsCount);
+
+    void recordCommand(uint32_t imageIndex, const std::vector<Mesh> &meshes, const MVP& mvp) const;
+
+    void submitCommand(uint32_t imageIndex);
 };
 
 

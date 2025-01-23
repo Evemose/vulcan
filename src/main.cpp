@@ -1,5 +1,7 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
@@ -43,13 +45,13 @@ int main() {
         {{-0.6f, -0.5f, 0.0f}, firstColor},
         {{-0.1f, -0.5f, 0.0f}, secondColor},
         {{-0.1f, 0.5f, 0.0f}, thirdColor},
-        {{-0.6f, 0.5f, 0.0f}, fourthColor},
+        {{-0.6f, 0.3f, 0.0f}, fourthColor},
     };
     std::vector<Vertex> vertices2 = {
         {{0.1f, -0.5f, 0.0f}, firstColor},
         {{0.6f, -0.5f, 0.0f}, secondColor},
         {{0.6f, 0.5f, 0.0f}, thirdColor},
-        {{0.1f, 0.5f, 0.0f}, fourthColor},
+        {{0.1f, 0.9f, 0.0f}, fourthColor},
     };
     std::vector<uint32_t> indices1 = {0, 1, 2, 0, 2, 3};
     std::vector<uint32_t> indices2 = {0, 1, 2, 0, 2, 3};

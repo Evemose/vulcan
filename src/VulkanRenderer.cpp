@@ -9,6 +9,8 @@
 #include <stdexcept>
 #include <tuple>
 #include <utility>
+#include <glm/ext/matrix_clip_space.hpp>
+#include <glm/ext/matrix_transform.hpp>
 
 #include "swapchain_choices.h"
 
@@ -93,13 +95,107 @@ std::vector<VkCommandBuffer> createCommandBuffers(
     return commandBuffers;
 }
 
+VkDescriptorSetLayout createDescriptorSetLayout(VkDevice vkDevice) {
+    VkDescriptorSetLayoutBinding mvpLayoutBinding = {};
+    mvpLayoutBinding.binding = 0;
+    mvpLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    mvpLayoutBinding.descriptorCount = 1;
+    mvpLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+    mvpLayoutBinding.pImmutableSamplers = nullptr;
+
+    VkDescriptorSetLayoutCreateInfo layoutInfo = {};
+    layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    layoutInfo.bindingCount = 1;
+    layoutInfo.pBindings = &mvpLayoutBinding;
+
+    VkDescriptorSetLayout descriptorSetLayout;
+    VK_CHECK(vkCreateDescriptorSetLayout(vkDevice, &layoutInfo, nullptr, &descriptorSetLayout));
+
+    return descriptorSetLayout;
+}
+
+std::tuple<std::vector<VkBuffer>, std::vector<VkDeviceMemory> > VulkanRenderer::createUniformBuffers(
+    Device device, size_t buffersCount
+) {
+    std::vector<VkBuffer> uniformBuffers(buffersCount);
+    std::vector<VkDeviceMemory> uniformBuffersMemory(buffersCount);
+
+    for (auto i = 0; i < buffersCount; i++) {
+        auto bufferSize = sizeof(MVP);
+        auto [buffer, memory] = createBuffer(
+            device.logicalDevice, device.physicalDevice,
+            bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+        );
+        uniformBuffers[i] = buffer;
+        uniformBuffersMemory[i] = memory;
+    }
+
+    return {uniformBuffers, uniformBuffersMemory};
+}
+
+VkDescriptorPool createDescriptorPool(VkDevice vkDevice, size_t size) {
+    VkDescriptorPoolSize poolSize = {};
+    poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    poolSize.descriptorCount = static_cast<uint32_t>(size);
+
+    VkDescriptorPoolCreateInfo poolInfo = {};
+    poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    poolInfo.poolSizeCount = 1;
+    poolInfo.pPoolSizes = &poolSize;
+    poolInfo.maxSets = static_cast<uint32_t>(size);
+
+    VkDescriptorPool descriptorPool;
+    VK_CHECK(vkCreateDescriptorPool(vkDevice, &poolInfo, nullptr, &descriptorPool));
+
+    return descriptorPool;
+}
+
+std::vector<VkDescriptorSet> VulkanRenderer::createDescriptorSets(
+    VkDevice vkDevice, VkDescriptorPool descriptorPool, VkDescriptorSetLayout descriptorSetLayout,
+    const std::vector<VkBuffer> &buffers, size_t setsCount
+) {
+    std::vector<VkDescriptorSet> sets(setsCount);
+    std::vector layoutsVector(setsCount, descriptorSetLayout);
+
+    VkDescriptorSetAllocateInfo allocInfo = {};
+    allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    allocInfo.descriptorPool = descriptorPool;
+    allocInfo.descriptorSetCount = static_cast<uint32_t>(setsCount);
+    allocInfo.pSetLayouts = layoutsVector.data();
+
+    VK_CHECK(vkAllocateDescriptorSets(vkDevice, &allocInfo, sets.data()));
+
+    for (auto i = 0u; i < setsCount; i++) {
+        VkDescriptorBufferInfo bufferInfo = {};
+        bufferInfo.buffer = buffers[i];
+        bufferInfo.offset = 0;
+        bufferInfo.range = sizeof(MVP);
+
+        VkWriteDescriptorSet descriptorWrite = {};
+        descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrite.dstSet = sets[i];
+        descriptorWrite.dstBinding = 0;
+        descriptorWrite.dstArrayElement = 0;
+        descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        descriptorWrite.descriptorCount = 1;
+        descriptorWrite.pBufferInfo = &bufferInfo;
+
+        vkUpdateDescriptorSets(vkDevice, 1, &descriptorWrite, 0, nullptr);
+    }
+
+    return sets;
+}
+
 VulkanRenderer VulkanRenderer::create(GLFWwindow *window) {
     auto instance = createInstance();
     auto surface = createSurface(instance, window);
     auto [device, queues, swapChainDetails] = getDeviceAndDetails(instance, surface);
     auto swapChainAndMeta = createSwapChain(device, surface, window);
     auto renderPass = createRenderPass(device.logicalDevice, swapChainAndMeta);
-    auto [graphicsPipeline, layout] = createGraphicsPipeline(device.logicalDevice, swapChainAndMeta, renderPass);
+    auto descriptorSetLayout = createDescriptorSetLayout(device.logicalDevice);
+    auto [graphicsPipeline, layout] = createGraphicsPipeline(device.logicalDevice, swapChainAndMeta, renderPass,
+                                                             descriptorSetLayout);
     auto swapChainFramebuffers = createFramebuffers(device.logicalDevice, swapChainAndMeta, renderPass);
     auto graphicsCommandPool = createCommandPool(device.logicalDevice, queues.graphicsFamily);
     auto commandBuffers = createCommandBuffers(
@@ -107,14 +203,29 @@ VulkanRenderer VulkanRenderer::create(GLFWwindow *window) {
     );
     auto [imageAvailableSemaphores, renderFinishedSemaphores, inFlightFences]
             = createSync(device.logicalDevice);
+    auto [uniformBuffers, uniformBuffersMemory] = createUniformBuffers(
+        device,
+        swapChainAndMeta.swapChainImages.size()
+    );
+    auto descriptorPool = createDescriptorPool(device.logicalDevice, swapChainAndMeta.swapChainImages.size());
+    auto descriptorSets = createDescriptorSets(
+        device.logicalDevice, descriptorPool, descriptorSetLayout, uniformBuffers,
+        swapChainAndMeta.swapChainImages.size()
+    );
     return {
         window, instance, device, queues, surface, swapChainAndMeta, renderPass, layout, graphicsPipeline,
         swapChainFramebuffers, graphicsCommandPool, commandBuffers, imageAvailableSemaphores, renderFinishedSemaphores,
-        inFlightFences
+        inFlightFences, descriptorSetLayout, uniformBuffers, uniformBuffersMemory, descriptorPool, descriptorSets
     };
 }
 
-void VulkanRenderer::recordCommand(uint32_t imageIndex, const std::vector<Mesh> &meshes) const {
+void VulkanRenderer::recordCommand(uint32_t imageIndex, const std::vector<Mesh> &meshes, const MVP &mvp) const {
+
+    void* data;
+    vkMapMemory(device.logicalDevice, uniformBuffersMemory[imageIndex], 0, sizeof(MVP), 0, &data);
+    memcpy(data, &mvp, sizeof(MVP));
+    vkUnmapMemory(device.logicalDevice, uniformBuffersMemory[imageIndex]);
+
     VkCommandBufferBeginInfo beginInfo = {};
     beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 
@@ -129,17 +240,21 @@ void VulkanRenderer::recordCommand(uint32_t imageIndex, const std::vector<Mesh> 
     };
     renderPassInfo.clearValueCount = 1;
     renderPassInfo.pClearValues = clearValues;
-    
+
     VK_CHECK(vkBeginCommandBuffer(commandBuffers[imageIndex], &beginInfo));
     renderPassInfo.framebuffer = swapChainFramebuffers[imageIndex];
 
     vkCmdBeginRenderPass(commandBuffers[imageIndex], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
     vkCmdBindPipeline(commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
-    VkDeviceSize offsets[] = { 0 };
+    VkDeviceSize offsets[] = {0};
     for (const auto &mesh: meshes) {
         VkBuffer vertexBuffers[] = {mesh.getVertexBuffer()};
         vkCmdBindVertexBuffers(commandBuffers[imageIndex], 0, 1, vertexBuffers, offsets);
         vkCmdBindIndexBuffer(commandBuffers[imageIndex], mesh.getIndexBuffer(), 0, VK_INDEX_TYPE_UINT32);
+        vkCmdBindDescriptorSets(
+            commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1,
+            &descriptorSets[imageIndex], 0, nullptr
+        );
         vkCmdDrawIndexed(commandBuffers[imageIndex], mesh.getIndexCount(), 1, 0, 0, 0);
     }
     vkCmdEndRenderPass(commandBuffers[imageIndex]);
@@ -148,7 +263,6 @@ void VulkanRenderer::recordCommand(uint32_t imageIndex, const std::vector<Mesh> 
 }
 
 void VulkanRenderer::submitCommand(uint32_t imageIndex) {
-
     VkSubmitInfo submitInfo = {};
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     submitInfo.waitSemaphoreCount = 1;
@@ -184,7 +298,22 @@ void VulkanRenderer::drawFrame(const std::vector<Mesh> &meshes) {
                           imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
     vkResetCommandBuffer(commandBuffers[imageIndex], 0);
 
-    recordCommand(imageIndex, meshes);
+    MVP mvp = {};
+    mvp.projection = glm::perspective(
+        glm::radians(45.0f),
+        swapChainAndMetadata.swapChainExtent.width / static_cast<float>(swapChainAndMetadata.swapChainExtent.height),
+        0.1f, 10.0f
+    );
+    mvp.view = lookAt(
+        glm::vec3(2.0f, 2.0f, 2.0f),
+        glm::vec3(0.0f, 0.0f, 0.0f),
+        glm::vec3(0.0f, 0.0f, 1.0f)
+    );
+    mvp.model = glm::mat4(1.0f);
+
+    mvp.projection[1][1] *= -1;
+
+    recordCommand(imageIndex, meshes, mvp);
     submitCommand(imageIndex);
 }
 
@@ -210,7 +339,10 @@ VulkanRenderer::VulkanRenderer(
     VkRenderPass renderPass, VkPipelineLayout pipelineLayout, VkPipeline graphicsPipeline,
     std::vector<VkFramebuffer> swapChainFramebuffers, VkCommandPool commandPool,
     std::vector<VkCommandBuffer> commandBuffers, std::vector<VkSemaphore> imageAvailableSemaphore,
-    std::vector<VkSemaphore> renderFinishedSemaphore, std::vector<VkFence> inFlightFences
+    std::vector<VkSemaphore> renderFinishedSemaphore, std::vector<VkFence> inFlightFences,
+    VkDescriptorSetLayout descriptorSetLayout,
+    std::vector<VkBuffer> uniformBuffers, std::vector<VkDeviceMemory> uniformBuffersMemory,
+    VkDescriptorPool descriptorPool, std::vector<VkDescriptorSet> descriptorSets
 ): window(window), instance(instance), device(device), queues(queues), surface(surface),
    graphicsQueue(getQueue(device.logicalDevice, queues.graphicsFamily)),
    presentQueue(getPresentQueue(device.logicalDevice, queues.presentFamily)),
@@ -218,11 +350,22 @@ VulkanRenderer::VulkanRenderer(
    pipelineLayout(pipelineLayout), swapChainFramebuffers(std::move(swapChainFramebuffers)), commandPool(commandPool),
    commandBuffers(std::move(commandBuffers)), imageAvailableSemaphores(std::move(imageAvailableSemaphore)),
    renderFinishedSemaphores(std::move(renderFinishedSemaphore)), inFlightFences(std::move(inFlightFences)),
-   meshFactory({device.physicalDevice, device.logicalDevice, commandPool, getQueue(device.logicalDevice, queues.graphicsFamily)}) {
+   meshFactory({
+       device.physicalDevice, device.logicalDevice, commandPool, getQueue(device.logicalDevice, queues.graphicsFamily)
+   }),
+   descriptorSetLayout(descriptorSetLayout), uniformBuffers(std::move(uniformBuffers)),
+   uniformBuffersMemory(std::move(uniformBuffersMemory)), descriptorPool(descriptorPool),
+   descriptorSets(std::move(descriptorSets)) {
 }
 
 VulkanRenderer::~VulkanRenderer() {
     vkDeviceWaitIdle(device.logicalDevice);
+    vkDestroyDescriptorSetLayout(device.logicalDevice, descriptorSetLayout, nullptr);
+    for (auto i = 0u; i < swapChainAndMetadata.swapChainImages.size(); i++) {
+        vkDestroyBuffer(device.logicalDevice, uniformBuffers[i], nullptr);
+        vkFreeMemory(device.logicalDevice, uniformBuffersMemory[i], nullptr);
+    }
+    vkDestroyDescriptorPool(device.logicalDevice, descriptorPool, nullptr);
     for (const auto &fence: inFlightFences) {
         vkDestroyFence(device.logicalDevice, fence, nullptr);
     }
@@ -557,7 +700,7 @@ VkRenderPass VulkanRenderer::createRenderPass(VkDevice device, const SwapChainAn
 
 std::tuple<VkPipeline, VkPipelineLayout> VulkanRenderer::createGraphicsPipeline(
     VkDevice device, const SwapChainAndMetadata &swapChainAndMetadata,
-    VkRenderPass renderPass) {
+    VkRenderPass renderPass, VkDescriptorSetLayout descriptorSetLayout) {
     auto vertexCode = readGlslResource("shader.vert");
     auto fragmentCode = readGlslResource("shader.frag");
 
@@ -631,7 +774,7 @@ std::tuple<VkPipeline, VkPipelineLayout> VulkanRenderer::createGraphicsPipeline(
     rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
     rasterizer.lineWidth = 1.0f;
     rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
-    rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
+    rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
     rasterizer.depthBiasEnable = VK_FALSE;
 
     VkPipelineMultisampleStateCreateInfo multisampling = {};
@@ -658,8 +801,8 @@ std::tuple<VkPipeline, VkPipelineLayout> VulkanRenderer::createGraphicsPipeline(
 
     VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
     pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    pipelineLayoutInfo.setLayoutCount = 0;
-    pipelineLayoutInfo.pSetLayouts = nullptr;
+    pipelineLayoutInfo.setLayoutCount = 1;
+    pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout;
     pipelineLayoutInfo.pushConstantRangeCount = 0;
     pipelineLayoutInfo.pPushConstantRanges = nullptr;
 
