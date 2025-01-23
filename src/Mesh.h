@@ -17,15 +17,18 @@ public:
 
     ~Mesh();
 
-    static Mesh create(VkPhysicalDevice physicalDevice, VkDevice device, const std::vector<Vertex>& vertices);
+    static Mesh create(const std::vector<Vertex>& vertices, VkDevice device, VkPhysicalDevice physicalDevice);
 
+    Mesh(const Mesh&) = delete;
+
+    Mesh(Mesh&& other) noexcept ;
 
 private:
-    const int vertexCount;
-    const VkPhysicalDevice physicalDevice;
-    const VkDevice device;
-    const VkBuffer vertexBuffer;
-    const VkDeviceMemory vertexBufferMemory;
+    int vertexCount;
+    VkPhysicalDevice physicalDevice;
+    VkDevice device;
+    VkBuffer vertexBuffer;
+    VkDeviceMemory vertexBufferMemory;
 
     static std::tuple<VkBuffer, VkDeviceMemory> createVertexBuffer(const std::vector<Vertex> &vertices, VkDevice device, VkPhysicalDevice physicalDevice);
 

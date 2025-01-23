@@ -114,7 +114,7 @@ VulkanRenderer VulkanRenderer::create(GLFWwindow *window) {
     };
 }
 
-void VulkanRenderer::recordCommand(uint32_t imageIndex) const {
+void VulkanRenderer::recordCommand(uint32_t imageIndex, const Mesh &mesh) const {
     VkCommandBufferBeginInfo beginInfo = {};
     beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 
@@ -135,10 +135,10 @@ void VulkanRenderer::recordCommand(uint32_t imageIndex) const {
 
     vkCmdBeginRenderPass(commandBuffers[imageIndex], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
     vkCmdBindPipeline(commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
-    VkBuffer vertexBuffers[] = {currentMesh.getVertexBuffer()};
+    VkBuffer vertexBuffers[] = {mesh.getVertexBuffer()};
     VkDeviceSize offsets[] = { 0 };
     vkCmdBindVertexBuffers(commandBuffers[imageIndex], 0, 1, vertexBuffers, offsets);
-    vkCmdDraw(commandBuffers[imageIndex], currentMesh.getVertexCount(), 1, 0, 0);
+    vkCmdDraw(commandBuffers[imageIndex], mesh.getVertexCount(), 1, 0, 0);
     vkCmdEndRenderPass(commandBuffers[imageIndex]);
 
     VK_CHECK(vkEndCommandBuffer(commandBuffers[imageIndex]));
@@ -172,7 +172,7 @@ void VulkanRenderer::submitCommand(uint32_t imageIndex) {
     currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 
-void VulkanRenderer::drawFrame(const std::vector<Vertex>& vertices) {
+void VulkanRenderer::drawFrame(const Mesh &mesh) {
     vkWaitForFences(device.logicalDevice, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
     vkResetFences(device.logicalDevice, 1, &inFlightFences[currentFrame]);
 
@@ -181,9 +181,12 @@ void VulkanRenderer::drawFrame(const std::vector<Vertex>& vertices) {
                           imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
     vkResetCommandBuffer(commandBuffers[imageIndex], 0);
 
-    currentMesh = std::unique_ptr<Mesh>(Mesh::create(device.physicalDevice, device.logicalDevice, vertices));
-    recordCommand(imageIndex);
+    recordCommand(imageIndex, mesh);
     submitCommand(imageIndex);
+}
+
+MeshFactory VulkanRenderer::getMeshFactory() const {
+    return meshFactory;
 }
 
 VkQueue getGraphicsQueue(const VkDevice device, const int graphicsFamilyIdx) {
@@ -211,7 +214,8 @@ VulkanRenderer::VulkanRenderer(
    swapChainAndMetadata(std::move(swapChainAndMetadata)), renderPass(renderPass), graphicsPipeline(graphicsPipeline),
    pipelineLayout(pipelineLayout), swapChainFramebuffers(std::move(swapChainFramebuffers)), commandPool(commandPool),
    commandBuffers(std::move(commandBuffers)), imageAvailableSemaphores(std::move(imageAvailableSemaphore)),
-   renderFinishedSemaphores(std::move(renderFinishedSemaphore)), inFlightFences(std::move(inFlightFences)) {
+   renderFinishedSemaphores(std::move(renderFinishedSemaphore)), inFlightFences(std::move(inFlightFences)),
+   meshFactory({device.physicalDevice, device.logicalDevice}) {
 }
 
 VulkanRenderer::~VulkanRenderer() {
@@ -575,11 +579,16 @@ std::tuple<VkPipeline, VkPipelineLayout> VulkanRenderer::createGraphicsPipeline(
     bindingDescription.binding = 0;
     bindingDescription.stride = sizeof(Vertex);
     bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-    std::array<VkVertexInputAttributeDescription, 1> attributeDescriptions = {};
+    std::array<VkVertexInputAttributeDescription, 2> attributeDescriptions = {};
     attributeDescriptions[0].binding = 0;
     attributeDescriptions[0].location = 0;
     attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
     attributeDescriptions[0].offset = offsetof(Vertex, pos);
+
+    attributeDescriptions[1].binding = 0;
+    attributeDescriptions[1].location = 1;
+    attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
+    attributeDescriptions[1].offset = offsetof(Vertex, color);
 
     VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
     vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;

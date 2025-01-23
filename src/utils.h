@@ -38,4 +38,5 @@ static std::vector<char> readGlslResource(const std::string &resourceName) {
 
 typedef struct {
     glm::vec3 pos;
+    glm::vec3 color;
 } Vertex;

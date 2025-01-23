@@ -24,6 +24,8 @@ add_executable(foobar
         src/utils.h
         src/Mesh.cpp
         src/Mesh.h
+        src/MeshFactory.cpp
+        src/MeshFactory.h
 )
 
 add_custom_target(CompileShaders ALL

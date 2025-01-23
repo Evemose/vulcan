@@ -8,17 +8,20 @@
 #include <vector>
 
 #include "Mesh.h"
+#include "MeshFactory.h"
 #include "utils.h"
 
 class VulkanRenderer {
 public:
     static VulkanRenderer create(GLFWwindow *window);
 
-    void recordCommand(uint32_t imageIndex) const;
+    void recordCommand(uint32_t imageIndex, const Mesh &mesh) const;
 
     void submitCommand(uint32_t imageIndex);
 
-    void drawFrame(const std::vector<Vertex>& vertices);
+    void drawFrame(const Mesh &mesh);
+
+    [[nodiscard]] MeshFactory getMeshFactory() const;
 
     ~VulkanRenderer();
 
@@ -79,9 +82,9 @@ private:
     const std::vector<VkSemaphore> imageAvailableSemaphores;
     const std::vector<VkSemaphore> renderFinishedSemaphores;
     const std::vector<VkFence> inFlightFences;
+    const MeshFactory meshFactory;
 
     int currentFrame = 0;
-    std::unique_ptr<Mesh> currentMesh;
 
     VulkanRenderer(
         const GLFWwindow *window, VkInstance instance, Device device, QueueFamilyIndices queues,

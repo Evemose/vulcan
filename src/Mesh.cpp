@@ -28,11 +28,23 @@ Mesh::~Mesh() {
     vkFreeMemory(device, vertexBufferMemory, nullptr);
 }
 
-Mesh Mesh::create(VkPhysicalDevice physicalDevice, VkDevice device, const std::vector<Vertex> &vertices) {
+Mesh Mesh::create(const std::vector<Vertex> &vertices, VkDevice device, VkPhysicalDevice physicalDevice) {
     const auto [buffer, memory] = createVertexBuffer(vertices, device, physicalDevice);
     return {
         physicalDevice, device, vertices, buffer, memory
     };
+}
+
+Mesh::Mesh(Mesh && other) noexcept {
+    vertexCount = other.vertexCount;
+    physicalDevice = other.physicalDevice;
+    device = other.device;
+    vertexBuffer = other.vertexBuffer;
+    vertexBufferMemory = other.vertexBufferMemory;
+
+    // Reset the other object
+    other.vertexBuffer = VK_NULL_HANDLE;
+    other.vertexBufferMemory = VK_NULL_HANDLE;
 }
 
 uint32_t findMemoryTypeIdx(VkPhysicalDevice physicalDevice, uint32_t memoryTypeBits, int flags) {
