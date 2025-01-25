@@ -1,6 +1,6 @@
 import os
 
-dir_path = '/home/customdev010/vulcan/firstapp'
+dir_path = '.'
 src_dir = os.path.join(dir_path, "src")
 build_dir = os.path.join(dir_path, "build")
 

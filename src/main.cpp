@@ -71,6 +71,8 @@ int main() {
         renderer.drawFrame(meshes);
     }
 
+    vkDeviceWaitIdle(renderer.getDevice());
+
     glfwDestroyWindow(window);
 
     glfwTerminate();

@@ -20,6 +20,8 @@ public:
 
     [[nodiscard]] MeshFactory getMeshFactory() const;
 
+    [[nodiscard]] VkDevice getDevice() const;
+
     ~VulkanRenderer();
 
 private:
