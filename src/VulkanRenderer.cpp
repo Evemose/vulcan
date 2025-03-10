@@ -289,6 +289,10 @@ void VulkanRenderer::submitCommand(uint32_t imageIndex) {
     currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 
+VkDevice VulkanRenderer::getDevice() const {
+    return device.logicalDevice;
+}
+
 void VulkanRenderer::drawFrame(const std::vector<Mesh> &meshes) {
     vkWaitForFences(device.logicalDevice, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
     vkResetFences(device.logicalDevice, 1, &inFlightFences[currentFrame]);
