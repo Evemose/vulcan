@@ -17,6 +17,7 @@ public:
     static VulkanRenderer create(GLFWwindow *window);
 
     void drawFrame(const std::vector<Mesh> &meshes);
+    void setModel(const glm::mat4 &model);
 
     [[nodiscard]] MeshFactory getMeshFactory() const;
 
@@ -92,6 +93,7 @@ private:
     const VkDescriptorPool descriptorPool;
     const std::vector<VkDescriptorSet> descriptorSets;
 
+    MVP mvp{};
     int currentFrame = 0;
 
     VulkanRenderer(
@@ -149,7 +151,7 @@ private:
         VkDescriptorSetLayout descriptorSetLayout,
         const std::vector<VkBuffer> &buffers, size_t setsCount);
 
-    void recordCommand(uint32_t imageIndex, const std::vector<Mesh> &meshes, const MVP& mvp) const;
+    void recordCommand(uint32_t imageIndex, const std::vector<Mesh> &meshes) const;
 
     void submitCommand(uint32_t imageIndex);
 };

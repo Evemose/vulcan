@@ -66,8 +66,25 @@ int main() {
     meshes.push_back(std::move(mesh1));
     meshes.push_back(std::move(mesh2));
 
+    float angle = 0.0f;
+    double lastTime = 0.0f;
+
     while (!glfwWindowShouldClose(window)) {
+        double delta = 90;
         glfwPollEvents();
+
+        double currentTime = glfwGetTime();
+        double deltaTime = currentTime - lastTime;
+        lastTime = currentTime;
+
+        angle += delta * deltaTime;
+
+        if (angle > 360.0f) {
+            angle -= 360.0f;
+        }
+
+        renderer.setModel(rotate(glm::mat4(1.0f), glm::radians(angle), glm::vec3(0.0f, 0.0f, 1.0f)));
+
         renderer.drawFrame(meshes);
     }
 

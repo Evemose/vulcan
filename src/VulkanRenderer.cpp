@@ -219,7 +219,7 @@ VulkanRenderer VulkanRenderer::create(GLFWwindow *window) {
     };
 }
 
-void VulkanRenderer::recordCommand(uint32_t imageIndex, const std::vector<Mesh> &meshes, const MVP &mvp) const {
+void VulkanRenderer::recordCommand(uint32_t imageIndex, const std::vector<Mesh> &meshes) const {
 
     void* data;
     vkMapMemory(device.logicalDevice, uniformBuffersMemory[imageIndex], 0, sizeof(MVP), 0, &data);
@@ -298,23 +298,12 @@ void VulkanRenderer::drawFrame(const std::vector<Mesh> &meshes) {
                           imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
     vkResetCommandBuffer(commandBuffers[imageIndex], 0);
 
-    MVP mvp = {};
-    mvp.projection = glm::perspective(
-        glm::radians(45.0f),
-        swapChainAndMetadata.swapChainExtent.width / static_cast<float>(swapChainAndMetadata.swapChainExtent.height),
-        0.1f, 10.0f
-    );
-    mvp.view = lookAt(
-        glm::vec3(2.0f, 2.0f, 2.0f),
-        glm::vec3(0.0f, 0.0f, 0.0f),
-        glm::vec3(0.0f, 0.0f, 1.0f)
-    );
-    mvp.model = glm::mat4(1.0f);
-
-    mvp.projection[1][1] *= -1;
-
-    recordCommand(imageIndex, meshes, mvp);
+    recordCommand(imageIndex, meshes);
     submitCommand(imageIndex);
+}
+
+void VulkanRenderer::setModel(const glm::mat4 &model) {
+    mvp.model = model;
 }
 
 MeshFactory VulkanRenderer::getMeshFactory() const {
@@ -356,6 +345,22 @@ VulkanRenderer::VulkanRenderer(
    descriptorSetLayout(descriptorSetLayout), uniformBuffers(std::move(uniformBuffers)),
    uniformBuffersMemory(std::move(uniformBuffersMemory)), descriptorPool(descriptorPool),
    descriptorSets(std::move(descriptorSets)) {
+    MVP mvp = {};
+    mvp.projection = glm::perspective(
+        glm::radians(45.0f),
+        static_cast<float>(swapChainAndMetadata.swapChainExtent.width) / static_cast<float>(swapChainAndMetadata.swapChainExtent.height),
+        0.1f, 10.0f
+    );
+    mvp.view = lookAt(
+        glm::vec3(2.0f, 2.0f, 2.0f),
+        glm::vec3(0.0f, 0.0f, 0.0f),
+        glm::vec3(0.0f, 0.0f, 1.0f)
+    );
+    mvp.model = glm::mat4(1.0f);
+
+    mvp.projection[1][1] *= -1;
+
+    this->mvp = mvp;
 }
 
 VulkanRenderer::~VulkanRenderer() {
@@ -857,7 +862,7 @@ std::vector<VkFramebuffer> VulkanRenderer::createFramebuffers(VkDevice device,
     return swapChainFramebuffers;
 }
 
-std::tuple<std::vector<VkSemaphore>, std::vector<VkSemaphore>, std::vector<VkFence> >
+std::tuple<std::vector<VkSemaphore>, std::vector<VkSemaphore>, std::vector<VkFence>>
 VulkanRenderer::createSync(VkDevice device) {
     VkSemaphoreCreateInfo semaphoreInfo = {};
     semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
