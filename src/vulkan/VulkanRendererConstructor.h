@@ -13,7 +13,8 @@ namespace enjine {
      */
     class VulkanRendererConstructor {
     public:
-        [[nodiscard]] std::unique_ptr<VulkanRenderer> create(GLFWwindow *window);
+
+        [[nodiscard]] std::unique_ptr<VulkanRenderer> create(GLFWwindow *window, int maxFramesInFlight = 2);
 
     private:
         bool alreadyUsed = false;
@@ -27,13 +28,25 @@ namespace enjine {
         SwapChainHandle swapChainHandle{};
         QueueHandle graphicsQueue{};
         QueueHandle presentQueue{};
+        vk::UniqueRenderPass renderPass;
+        vk::UniquePipeline graphicsPipeline;
+        vk::UniquePipelineLayout pipelineLayout;
+        vk::UniqueCommandPool commandPool;
         std::vector<ImageResources> imageResources;
         std::vector<FrameSync> frameSyncs;
 
-        [[nodiscard]] vk::UniqueSurfaceKHR createSurface();
-        [[nodiscard]] vk::PhysicalDevice retrievePhysicalDevice();
-        [[nodiscard]] vk::UniqueDevice createLogicalDevice() const;
-        [[nodiscard]] SwapChainHandle createSwapChain();
+        void createSurface();
+        void retrievePhysicalDevice();
+        void createLogicalDevice();
+        void createSwapChain();
         void initQueues();
+        void createRenderPass();
+        void createGraphicsPipeline();
+        void createImageResources();
+        void createFramebuffers();
+        void createCommandBuffers();
+        void createFrameSyncs(int maxFramesInFlight);
+
+        vk::UniqueShaderModule createShaderModule(const std::vector<char> &code);
     };
 }

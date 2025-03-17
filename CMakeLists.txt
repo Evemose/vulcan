@@ -24,12 +24,16 @@ add_executable(foobar
         src/vulkan/VulkanRendererConstructor.h
         src/vulkan/structs.h
         src/vulkan/utils.h
+        src/io/files.h
 )
 
-add_custom_command(
-        TARGET foobar PRE_BUILD
+add_custom_target(CompileShaders ALL
         COMMAND ${CMAKE_COMMAND} -E env python3 ${CMAKE_SOURCE_DIR}/buildscripts/compile-shaders.py
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
+
+
+add_dependencies(foobar CompileShaders)
 
 target_sources(foobar PRIVATE src/main.cpp)
 

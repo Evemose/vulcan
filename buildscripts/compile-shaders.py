@@ -1,10 +1,14 @@
 import os
 
-dir_path = '.'
-src_dir = os.path.join(dir_path, "src")
-build_dir = os.path.join(dir_path, "build")
+script_dir = os.path.dirname(os.path.realpath(__file__))
+project_root = os.path.abspath(os.path.join(script_dir, ".."))
+
+src_dir = os.path.join(project_root, "src")
+build_dir = os.path.join(project_root, "build")
 
 print(f"Compiling shaders from {src_dir} to {build_dir}")
+
+total_shaders = 0
 
 for root, dirs, files in os.walk(src_dir):
     for file in files:
@@ -27,3 +31,6 @@ for root, dirs, files in os.walk(src_dir):
                 cmd = f'glslc "{source_file}" -o "{compiled_file}"'
                 os.system(cmd)
                 print(f"Compiled {rel_path}")
+                total_shaders += 1
+
+print(f"Compiled {total_shaders} shaders")

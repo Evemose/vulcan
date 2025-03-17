@@ -4,8 +4,8 @@
 
 namespace enjine {
     struct Vertex {
-        glm::mat3 pos;
-        glm::mat3 color;
+        glm::vec3 pos;
+        glm::vec3 color;
     };
 
     struct Mesh {

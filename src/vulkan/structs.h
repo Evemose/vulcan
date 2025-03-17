@@ -1,4 +1,6 @@
 #pragma once
+#include "GLFW/glfw3.h"
+#include <vulkan/vulkan.hpp>
 
 namespace enjine {
     struct QueueHandle {
@@ -21,7 +23,7 @@ namespace enjine {
     };
 
     struct SwapChainImage {
-        vk::UniqueImage image;
+        vk::Image image;
         vk::UniqueImageView imageView;
     };
 
@@ -30,5 +32,22 @@ namespace enjine {
         vk::Format swapChainImageFormat;
         vk::Extent2D swapChainExtent;
         std::vector<SwapChainImage> swapChainImages;
+    };
+
+    struct RendererResources {
+        GLFWwindow* window;
+        vk::UniqueInstance instance;
+        vk::PhysicalDevice physicalDevice;
+        vk::UniqueDevice logicalDevice;
+        vk::UniqueSurfaceKHR surface;
+        SwapChainHandle swapChainHandle{};
+        QueueHandle graphicsQueue{};
+        QueueHandle presentQueue{};
+        vk::UniqueRenderPass renderPass;
+        vk::UniquePipeline graphicsPipeline;
+        vk::UniquePipelineLayout pipelineLayout;
+        vk::UniqueCommandPool commandPool;
+        std::vector<ImageResources> imageResources;
+        std::vector<FrameSync> frameSyncs;
     };
 }
