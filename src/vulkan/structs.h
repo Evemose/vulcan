@@ -20,10 +20,15 @@ namespace enjine {
         vk::UniqueFence inFlightFence;
     };
 
+    struct SwapChainImage {
+        vk::UniqueImage image;
+        vk::UniqueImageView imageView;
+    };
+
     struct SwapChainHandle {
         vk::UniqueSwapchainKHR swapChain;
-        VkFormat swapChainImageFormat;
-        VkExtent2D swapChainExtent;
-        std::vector<vk::UniqueImage> swapChainImages;
+        vk::Format swapChainImageFormat;
+        vk::Extent2D swapChainExtent;
+        std::vector<SwapChainImage> swapChainImages;
     };
 }

@@ -13,7 +13,6 @@ namespace enjine {
      */
     class VulkanRendererConstructor {
     public:
-
         [[nodiscard]] std::unique_ptr<VulkanRenderer> create(GLFWwindow *window);
 
     private:
@@ -35,5 +34,6 @@ namespace enjine {
         [[nodiscard]] vk::PhysicalDevice retrievePhysicalDevice();
         [[nodiscard]] vk::UniqueDevice createLogicalDevice() const;
         [[nodiscard]] SwapChainHandle createSwapChain();
+        void initQueues();
     };
 }
