@@ -6,6 +6,7 @@
 
 #include "utils.h"
 #include "../io/files.h"
+#include "../ViewProjection.h"
 
 std::unordered_set preferableFormats = {
     vk::Format::eB8G8R8Unorm,
@@ -216,8 +217,8 @@ namespace enjine {
 
         vk::PipelineLayoutCreateInfo pipelineLayoutInfo = {};
         pipelineLayoutInfo.sType = vk::StructureType::ePipelineLayoutCreateInfo;
-        pipelineLayoutInfo.setLayoutCount = 0;
-        pipelineLayoutInfo.pSetLayouts = nullptr;
+        pipelineLayoutInfo.setLayoutCount = 1;
+        pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout.get();
         pipelineLayoutInfo.pushConstantRangeCount = 0;
         pipelineLayoutInfo.pPushConstantRanges = nullptr;
 
@@ -282,6 +283,92 @@ namespace enjine {
         }
     }
 
+    void VulkanRendererConstructor::createDescriptorSetLayout() {
+        vk::DescriptorSetLayoutBinding layoutBinding = {};
+        layoutBinding.binding = 0;
+        layoutBinding.descriptorType = vk::DescriptorType::eUniformBuffer;
+        layoutBinding.descriptorCount = 1;
+        layoutBinding.stageFlags = vk::ShaderStageFlagBits::eVertex;
+
+        vk::DescriptorSetLayoutCreateInfo descriptorSetLayoutInfo = {};
+        descriptorSetLayoutInfo.sType = vk::StructureType::eDescriptorSetLayoutCreateInfo;
+        descriptorSetLayoutInfo.bindingCount = 1;
+        descriptorSetLayoutInfo.pBindings = &layoutBinding;
+
+        descriptorSetLayout = logicalDevice->createDescriptorSetLayoutUnique(descriptorSetLayoutInfo);
+    }
+
+    void VulkanRendererConstructor::createDescriptorPool() {
+        vk::DescriptorPoolSize poolSize = {};
+        poolSize.type = vk::DescriptorType::eUniformBuffer;
+        poolSize.descriptorCount = static_cast<uint32_t>(imageResources.size());
+
+        vk::DescriptorPoolCreateInfo descriptorPoolInfo = {};
+        descriptorPoolInfo.sType = vk::StructureType::eDescriptorPoolCreateInfo;
+        descriptorPoolInfo.poolSizeCount = 1;
+        descriptorPoolInfo.pPoolSizes = &poolSize;
+        descriptorPoolInfo.maxSets = static_cast<uint32_t>(imageResources.size());
+
+        descriptorPool = logicalDevice->createDescriptorPoolUnique(descriptorPoolInfo);
+    }
+
+    void VulkanRendererConstructor::allocateDescriptorSets() {
+        vk::DescriptorSetAllocateInfo descriptorSetAllocateInfo = {};
+        descriptorSetAllocateInfo.sType = vk::StructureType::eDescriptorSetAllocateInfo;
+        descriptorSetAllocateInfo.descriptorPool = descriptorPool.get();
+        descriptorSetAllocateInfo.descriptorSetCount = static_cast<uint32_t>(imageResources.size());
+
+        std::vector descriptorSetLayouts(imageResources.size(), descriptorSetLayout.get());
+        descriptorSetAllocateInfo.pSetLayouts = descriptorSetLayouts.data();
+
+        auto sets = logicalDevice->allocateDescriptorSetsUnique(descriptorSetAllocateInfo);
+        for (auto i = 0u; i < imageResources.size(); i++) {
+            imageResources[i].viewProjectionDescriptorSet = std::move(sets[i]);
+        }
+    }
+
+    void VulkanRendererConstructor::createUniformBuffers() {
+        for (auto &resource: imageResources) {
+            auto createResult = createBuffer(
+                {physicalDevice, logicalDevice.get()},
+                sizeof(ViewProjection),
+                vk::BufferUsageFlagBits::eUniformBuffer,
+                vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent
+            );
+
+            resource.viewProjectionUniformBuffer = std::move(createResult.buffer);
+            resource.viewProjectionUniformBufferMemory = std::move(createResult.memory);
+        }
+    }
+
+    void VulkanRendererConstructor::bindDescriptorsToBuffers() {
+        for (auto& resource: imageResources) {
+            vk::DescriptorBufferInfo bufferInfo = {};
+            bufferInfo.buffer = resource.viewProjectionUniformBuffer.get();
+            bufferInfo.offset = 0;
+            bufferInfo.range = sizeof(ViewProjection);
+
+            vk::WriteDescriptorSet writeDescriptorSet = {};
+            writeDescriptorSet.sType = vk::StructureType::eWriteDescriptorSet;
+            writeDescriptorSet.dstSet = resource.viewProjectionDescriptorSet.get();
+            writeDescriptorSet.dstBinding = 0;
+            writeDescriptorSet.dstArrayElement = 0;
+            writeDescriptorSet.descriptorType = vk::DescriptorType::eUniformBuffer;
+            writeDescriptorSet.descriptorCount = 1;
+            writeDescriptorSet.pBufferInfo = &bufferInfo;
+
+            logicalDevice->updateDescriptorSets(1, &writeDescriptorSet, 0, nullptr);
+        }
+    }
+
+    void VulkanRendererConstructor::createDescriptorSets() {
+        createDescriptorPool();
+        createDescriptorSetLayout();
+        allocateDescriptorSets();
+        createUniformBuffers();
+        bindDescriptorsToBuffers();
+    }
+
     void VulkanRendererConstructor::createFrameSyncs(int maxFramesInFlight) {
         vk::SemaphoreCreateInfo semaphoreInfo = {};
         semaphoreInfo.sType = vk::StructureType::eSemaphoreCreateInfo;
@@ -291,12 +378,11 @@ namespace enjine {
         fenceInfo.sType = vk::StructureType::eFenceCreateInfo;
         fenceInfo.flags = vk::FenceCreateFlagBits::eSignaled;
 
-        for (auto& frameSync: frameSyncs) {
+        for (auto &frameSync: frameSyncs) {
             frameSync.imageAvailableSemaphore = logicalDevice->createSemaphoreUnique(semaphoreInfo);
             frameSync.renderFinishedSemaphore = logicalDevice->createSemaphoreUnique(semaphoreInfo);
             frameSync.inFlightFence = logicalDevice->createFenceUnique(fenceInfo);
         }
-
     }
 
     void VulkanRendererConstructor::createImageResources() {
@@ -306,7 +392,7 @@ namespace enjine {
 
         createFramebuffers();
         createCommandBuffers();
-
+        createDescriptorSets();
     }
 
     std::unique_ptr<VulkanRenderer> VulkanRendererConstructor::create(GLFWwindow *window, int maxFramesInFlight) {
@@ -318,8 +404,8 @@ namespace enjine {
         initQueues();
         createSwapChain();
         createRenderPass();
-        createGraphicsPipeline();
         createImageResources();
+        createGraphicsPipeline();
         createFrameSyncs(maxFramesInFlight);
 
         return std::make_unique<VulkanRenderer>(RendererResources{
@@ -336,7 +422,9 @@ namespace enjine {
             std::move(pipelineLayout),
             std::move(commandPool),
             std::move(imageResources),
-            std::move(frameSyncs)
+            std::move(frameSyncs),
+            std::move(descriptorPool),
+            std::move(descriptorSetLayout),
         });
     }
 

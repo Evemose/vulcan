@@ -4,6 +4,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <glm/gtc/matrix_transform.hpp>
 
 #include "vulkan/VulkanRendererConstructor.h"
 
@@ -47,9 +48,19 @@ int main() {
         glm::mat4{1.0f},
     });
 
+    auto projection = glm::mat4(1.0f);
+    auto view = glm::lookAt(
+        glm::vec3(2.0f, 2.0f, 2.0f),
+        glm::vec3(0.0f, 0.0f, 0.0f),
+        glm::vec3(0.0f, 0.0f, 1.0f)
+    );
+
     while (!glfwWindowShouldClose(window.get())) {
         glfwPollEvents();
-        renderer->render(renderObjects);
+        renderer->render(renderObjects, {
+            projection,
+            view
+        });
     }
 
     glfwTerminate();

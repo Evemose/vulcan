@@ -13,14 +13,13 @@ namespace enjine {
      */
     class VulkanRendererConstructor {
     public:
-
         [[nodiscard]] std::unique_ptr<VulkanRenderer> create(GLFWwindow *window, int maxFramesInFlight = 2);
 
     private:
         bool alreadyUsed = false;
 
         // Vulkan structures
-        GLFWwindow* window = nullptr;
+        GLFWwindow *window = nullptr;
         vk::UniqueInstance instance;
         vk::PhysicalDevice physicalDevice;
         vk::UniqueDevice logicalDevice;
@@ -34,17 +33,41 @@ namespace enjine {
         vk::UniqueCommandPool commandPool;
         std::vector<ImageResources> imageResources;
         std::vector<FrameSync> frameSyncs;
+        vk::UniqueDescriptorPool descriptorPool;
+        vk::UniqueDescriptorSetLayout descriptorSetLayout;
 
         void createSurface();
+
         void retrievePhysicalDevice();
+
         void createLogicalDevice();
+
         void createSwapChain();
+
         void initQueues();
+
         void createRenderPass();
+
         void createGraphicsPipeline();
+
         void createImageResources();
+
         void createFramebuffers();
+
         void createCommandBuffers();
+
+        void createDescriptorSetLayout();
+
+        void createDescriptorPool();
+
+        void allocateDescriptorSets();
+
+        void createUniformBuffers();
+
+        void bindDescriptorsToBuffers();
+
+        void createDescriptorSets();
+
         void createFrameSyncs(int maxFramesInFlight);
 
         vk::UniqueShaderModule createShaderModule(const std::vector<char> &code);

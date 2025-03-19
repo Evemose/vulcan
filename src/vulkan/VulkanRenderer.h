@@ -8,7 +8,7 @@
 namespace enjine {
     class VulkanRenderer final : IRenderer {
     public:
-        void render(const std::vector<RenderObject> &meshes) override;
+        void render(const std::vector<RenderObject> &meshes, ViewProjection viewProjection) override;
 
         explicit VulkanRenderer(RendererResources &&resources)
             : resources(std::move(resources)),
@@ -19,8 +19,10 @@ namespace enjine {
     private:
         const RendererResources resources;
         const size_t maxFramesInFlight;
-        std::vector<std::vector<MeshBuffers>> inUseBuffersByImageIndex;
+        std::vector<std::vector<MeshBuffers> > inUseBuffersByImageIndex;
         int currentFrame = 0;
+
+        void writeViewProjection(uint32_t imageIndex, const ViewProjection &viewProjection);
 
         void recordDrawCommand(uint32_t imageIndex, const std::vector<RenderObject> &objects);
 
@@ -28,6 +30,6 @@ namespace enjine {
 
         void present(uint32_t imageIndex) const;
 
-        std::vector<std::vector<MeshBuffers>> initInUseBuffersMap() const;
+        std::vector<std::vector<MeshBuffers> > initInUseBuffersMap() const;
     };
 }

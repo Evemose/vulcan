@@ -32,11 +32,10 @@ namespace enjine {
         if (result != vk::Result::eSuccess) {
             throw std::runtime_error("failed to present");
         }
-
     }
 
-    std::vector<std::vector<MeshBuffers>> VulkanRenderer::initInUseBuffersMap() const {
-        std::vector<std::vector<MeshBuffers>> inUseBuffers;
+    std::vector<std::vector<MeshBuffers> > VulkanRenderer::initInUseBuffersMap() const {
+        std::vector<std::vector<MeshBuffers> > inUseBuffers;
         inUseBuffers.reserve(resources.imageResources.size());
         for (int i = 0; i < resources.imageResources.size(); i++) {
             inUseBuffers.push_back(std::vector<MeshBuffers>());
@@ -44,15 +43,25 @@ namespace enjine {
         return inUseBuffers;
     }
 
-    void VulkanRenderer::render(const std::vector<RenderObject> &meshes) {
+    void VulkanRenderer::writeViewProjection(uint32_t imageIndex, const ViewProjection &viewProjection) {
+        auto data = resources.logicalDevice->mapMemory(
+            resources.imageResources[imageIndex].viewProjectionUniformBufferMemory.get(),
+            0,
+            sizeof(ViewProjection)
+        );
+        std::memcpy(data, &viewProjection, sizeof(ViewProjection));
+        resources.logicalDevice->unmapMemory(resources.imageResources[imageIndex].viewProjectionUniformBufferMemory.get());
+    }
 
+    void VulkanRenderer::render(const std::vector<RenderObject> &meshes, ViewProjection viewProjection) {
         auto fence = resources.frameSyncs[currentFrame].inFlightFence.get();
 
-        if (auto result = resources.logicalDevice->waitForFences(1, &fence, VK_TRUE, UINT64_MAX); result != vk::Result::eSuccess) {
+        if (auto result = resources.logicalDevice->waitForFences(1, &fence, VK_TRUE, UINT64_MAX);
+            result != vk::Result::eSuccess) {
             throw std::runtime_error("Failed to wait for fence");
         }
 
-        resources.logicalDevice->resetFences({ fence });
+        resources.logicalDevice->resetFences({fence});
 
         auto imageIndex = resources.logicalDevice->acquireNextImageKHR(
             resources.swapChainHandle.swapChain.get(),
@@ -60,12 +69,12 @@ namespace enjine {
             resources.frameSyncs[currentFrame].imageAvailableSemaphore.get()
         ).value;
 
+        writeViewProjection(imageIndex, viewProjection);
         recordDrawCommand(imageIndex, meshes);
         submitBuffer(imageIndex);
         present(imageIndex);
 
         currentFrame = (currentFrame + 1) % static_cast<int>(maxFramesInFlight);
-
     }
 
     void VulkanRenderer::recordDrawCommand(uint32_t imageIndex, const std::vector<RenderObject> &objects) {
@@ -95,16 +104,26 @@ namespace enjine {
 
         commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, resources.graphicsPipeline.get());
 
-        auto& meshBuffers = inUseBuffersByImageIndex[imageIndex];
+        auto &meshBuffers = inUseBuffersByImageIndex[imageIndex];
         meshBuffers.clear();
         meshBuffers.reserve(objects.size());
 
+        commandBuffer.bindDescriptorSets(
+            vk::PipelineBindPoint::eGraphics,
+            resources.pipelineLayout.get(),
+            0,
+            resources.imageResources[imageIndex].viewProjectionDescriptorSet.get(),
+            nullptr
+        );
+
         for (int i = 0; i < objects.size(); i++) {
-            meshBuffers.emplace_back(MeshBufferResources{
-                {resources.physicalDevice, resources.logicalDevice.get()},
-                resources.commandPool.get(),
-                resources.graphicsQueue.queue
-            }, objects[i].mesh);
+            meshBuffers.emplace_back(
+                MeshBufferResources{
+                    {resources.physicalDevice, resources.logicalDevice.get()},
+                    resources.commandPool.get(),
+                    resources.graphicsQueue.queue
+                }, objects[i].mesh
+            );
 
             commandBuffer.bindVertexBuffers(0, meshBuffers[i].getVertexBuffer(), {0});
             commandBuffer.bindIndexBuffer(meshBuffers[i].getIndexBuffer(), 0, vk::IndexType::eUint32);

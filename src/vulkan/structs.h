@@ -11,9 +11,9 @@ namespace enjine {
     struct ImageResources {
         vk::UniqueFramebuffer framebuffer;
         vk::UniqueCommandBuffer commandBuffer;
-        vk::UniqueBuffer uniformBuffer;
-        vk::UniqueDeviceMemory uniformBufferMemory;
-        vk::UniqueDescriptorSet descriptorSet;
+        vk::UniqueBuffer viewProjectionUniformBuffer;
+        vk::UniqueDeviceMemory viewProjectionUniformBufferMemory;
+        vk::UniqueDescriptorSet viewProjectionDescriptorSet;
     };
 
     struct FrameSync {
@@ -54,5 +54,7 @@ namespace enjine {
         vk::UniqueCommandPool commandPool;
         std::vector<ImageResources> imageResources;
         std::vector<FrameSync> frameSyncs;
+        vk::UniqueDescriptorPool descriptorPool;
+        vk::UniqueDescriptorSetLayout descriptorSetLayout;
     };
 }
