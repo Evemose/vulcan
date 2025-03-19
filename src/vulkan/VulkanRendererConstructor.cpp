@@ -187,7 +187,7 @@ namespace enjine {
         rasterizerInfo.rasterizerDiscardEnable = VK_FALSE;
         rasterizerInfo.polygonMode = vk::PolygonMode::eFill;
         rasterizerInfo.lineWidth = 1.0f;
-        rasterizerInfo.cullMode = vk::CullModeFlagBits::eBack;
+        rasterizerInfo.cullMode = vk::CullModeFlagBits::eNone;
         rasterizerInfo.frontFace = vk::FrontFace::eCounterClockwise;
         rasterizerInfo.depthBiasEnable = VK_FALSE;
 
