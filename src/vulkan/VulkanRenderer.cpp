@@ -1,5 +1,6 @@
 #include "VulkanRenderer.h"
 
+#include "MeshBuffers.h"
 #include "VulkanRendererConstructor.h"
 
 namespace enjine {
@@ -34,13 +35,20 @@ namespace enjine {
 
     }
 
+    std::vector<std::vector<MeshBuffers>> VulkanRenderer::initInUseBuffersMap() const {
+        std::vector<std::vector<MeshBuffers>> inUseBuffers;
+        inUseBuffers.reserve(resources.imageResources.size());
+        for (int i = 0; i < resources.imageResources.size(); i++) {
+            inUseBuffers.push_back(std::vector<MeshBuffers>());
+        }
+        return inUseBuffers;
+    }
+
     void VulkanRenderer::render(const std::vector<RenderObject> &meshes) {
 
         auto fence = resources.frameSyncs[currentFrame].inFlightFence.get();
 
-        auto result = resources.logicalDevice->waitForFences(1, &fence, VK_TRUE, UINT64_MAX);
-
-        if (result != vk::Result::eSuccess) {
+        if (auto result = resources.logicalDevice->waitForFences(1, &fence, VK_TRUE, UINT64_MAX); result != vk::Result::eSuccess) {
             throw std::runtime_error("Failed to wait for fence");
         }
 
@@ -60,7 +68,7 @@ namespace enjine {
 
     }
 
-    void VulkanRenderer::recordDrawCommand(uint32_t imageIndex, const std::vector<RenderObject> &objects) const {
+    void VulkanRenderer::recordDrawCommand(uint32_t imageIndex, const std::vector<RenderObject> &objects) {
         vk::RenderPassBeginInfo renderPassInfo;
         renderPassInfo.renderPass = resources.renderPass.get();
         renderPassInfo.framebuffer = resources.imageResources[imageIndex].framebuffer.get();
@@ -87,16 +95,22 @@ namespace enjine {
 
         commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, resources.graphicsPipeline.get());
 
-        // for (const auto &object: objects) {
-        //     commandBuffer.draw(
-        //         object.mesh.vertices.size(),
-        //         1,
-        //         0,
-        //         0
-        //     );
-        // }
+        auto& meshBuffers = inUseBuffersByImageIndex[imageIndex];
+        meshBuffers.clear();
+        meshBuffers.reserve(objects.size());
 
-        commandBuffer.draw(3, 1, 0, 0);
+        for (int i = 0; i < objects.size(); i++) {
+            meshBuffers.emplace_back(MeshBufferResources{
+                {resources.physicalDevice, resources.logicalDevice.get()},
+                resources.commandPool.get(),
+                resources.graphicsQueue.queue
+            }, objects[i].mesh);
+
+            commandBuffer.bindVertexBuffers(0, meshBuffers[i].getVertexBuffer(), {0});
+            commandBuffer.bindIndexBuffer(meshBuffers[i].getIndexBuffer(), 0, vk::IndexType::eUint32);
+
+            commandBuffer.drawIndexed(objects[i].mesh.indices.size(), 1, 0, 0, 0);
+        }
 
         commandBuffer.endRenderPass();
 

@@ -3,6 +3,7 @@
 #include <GLFW/glfw3.h>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "vulkan/VulkanRendererConstructor.h"
 
@@ -33,9 +34,10 @@ int main() {
     std::vector<enjine::Vertex> vertices;
     vertices.push_back(enjine::Vertex{{-0.6f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}});
     vertices.push_back(enjine::Vertex{{-0.1f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}});
-    vertices.push_back(enjine::Vertex{{-0.1f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}});
+    vertices.push_back(enjine::Vertex{{-0.1f,  0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}});
+    vertices.push_back(enjine::Vertex{{-0.6f,  0.5f, 0.0f}, {0.0f, 1.0f, 1.0f}});
 
-    std::vector<uint32_t> indices = {0, 1, 2, 0, 2, 3};
+    std::vector<uint32_t> indices = {0, 2, 1, 0, 3, 2};
 
     renderObjects.push_back(enjine::RenderObject{
         enjine::Mesh {

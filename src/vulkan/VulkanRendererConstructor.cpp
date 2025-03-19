@@ -129,12 +129,31 @@ namespace enjine {
         fragmentStageInfo.pName = "main";
         fragmentStageInfo.sType = vk::StructureType::ePipelineShaderStageCreateInfo;
 
+        vk::VertexInputAttributeDescription positionDescription = {};
+        positionDescription.binding = 0;
+        positionDescription.location = 0;
+        positionDescription.format = vk::Format::eR32G32B32Sfloat;
+        positionDescription.offset = offsetof(Vertex, pos);
+
+        vk::VertexInputAttributeDescription colorDescription = {};
+        colorDescription.binding = 0;
+        colorDescription.location = 1;
+        colorDescription.format = vk::Format::eR32G32B32Sfloat;
+        colorDescription.offset = offsetof(Vertex, color);
+
+        std::array attributesDescription = {positionDescription, colorDescription};
+
+        vk::VertexInputBindingDescription bindingDescription = {};
+        bindingDescription.binding = 0;
+        bindingDescription.stride = sizeof(Vertex);
+        bindingDescription.inputRate = vk::VertexInputRate::eVertex;
+
         vk::PipelineVertexInputStateCreateInfo vertexInputInfo = {};
         vertexInputInfo.sType = vk::StructureType::ePipelineVertexInputStateCreateInfo;
-        vertexInputInfo.vertexBindingDescriptionCount = 0;
-        vertexInputInfo.pVertexBindingDescriptions = nullptr;
-        vertexInputInfo.vertexAttributeDescriptionCount = 0;
-        vertexInputInfo.pVertexAttributeDescriptions = nullptr;
+        vertexInputInfo.vertexBindingDescriptionCount = 1;
+        vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
+        vertexInputInfo.vertexAttributeDescriptionCount = attributesDescription.size();
+        vertexInputInfo.pVertexAttributeDescriptions = attributesDescription.data();
 
         vk::PipelineInputAssemblyStateCreateInfo inputAssemblyInfo = {};
         inputAssemblyInfo.sType = vk::StructureType::ePipelineInputAssemblyStateCreateInfo;

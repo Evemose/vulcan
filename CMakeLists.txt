@@ -25,6 +25,9 @@ add_executable(foobar
         src/vulkan/structs.h
         src/vulkan/utils.h
         src/io/files.h
+        src/vulkan/MeshBuffers.cpp
+        src/vulkan/MeshBuffers.h
+        src/vulkan/utils.cpp
 )
 
 add_custom_target(CompileShaders ALL

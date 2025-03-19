@@ -34,6 +34,11 @@ namespace enjine {
         std::vector<SwapChainImage> swapChainImages;
     };
 
+    struct Devices {
+        vk::PhysicalDevice physicalDevice;
+        vk::Device logicalDevice;
+    };
+
     struct RendererResources {
         GLFWwindow* window;
         vk::UniqueInstance instance;
