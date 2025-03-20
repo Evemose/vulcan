@@ -3,9 +3,13 @@
 
 namespace enjine {
 
+    struct Model {
+        glm::mat4 model{};
+    };
+
     struct RenderObject {
         Mesh mesh;
-        glm::mat4 model{};
+        Model model;
     };
 
 }

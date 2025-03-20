@@ -29,7 +29,7 @@ namespace enjine {
         return indexBuffer.buffer.get();
     }
 
-    BufferCreateResult MeshBuffers::createVertexBuffer() const {
+    createViewProjectionBuffers MeshBuffers::createVertexBuffer() const {
         return createGpuLocalBuffer(
             resources.devices,
             mesh.vertices,
@@ -39,7 +39,7 @@ namespace enjine {
         );
     }
 
-    BufferCreateResult MeshBuffers::createIndexBuffer() const {
+    createViewProjectionBuffers MeshBuffers::createIndexBuffer() const {
         return createGpuLocalBuffer(
             resources.devices,
             mesh.indices,

@@ -13,7 +13,7 @@ namespace enjine {
      */
     class VulkanRendererConstructor {
     public:
-        [[nodiscard]] std::unique_ptr<VulkanRenderer> create(GLFWwindow *window, int maxFramesInFlight = 2);
+        [[nodiscard]] std::unique_ptr<VulkanRenderer> create(GLFWwindow *window, int maxObjectsPerFrame = 100000, int maxFramesInFlight = 2);
 
     private:
         bool alreadyUsed = false;
@@ -35,6 +35,7 @@ namespace enjine {
         std::vector<FrameSync> frameSyncs;
         vk::UniqueDescriptorPool descriptorPool;
         vk::UniqueDescriptorSetLayout descriptorSetLayout;
+        Model* modelTransferSpace = nullptr;
 
         void createSurface();
 
@@ -50,7 +51,7 @@ namespace enjine {
 
         void createGraphicsPipeline();
 
-        void createImageResources();
+        void createImageResources(int maxObjectsPerFrame);
 
         void createFramebuffers();
 
@@ -62,11 +63,17 @@ namespace enjine {
 
         void allocateDescriptorSets();
 
-        void createUniformBuffers();
+        void createViewProjectionBuffer(ImageResources &resource);
+
+        void createModelBuffer(int maxObjectsPerFrame, ImageResources &resource);
+
+        void allocateModelBufferResources(int maxObjectsPerFrame);
+
+        void createUniformBuffers(int maxObjectsPerFrame);
 
         void bindDescriptorsToBuffers();
 
-        void createDescriptorSets();
+        void createDescriptorSets(int maxObjectsPerFrame);
 
         void createFrameSyncs(int maxFramesInFlight);
 

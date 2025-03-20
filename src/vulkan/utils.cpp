@@ -17,7 +17,7 @@ namespace enjine {
         throw std::runtime_error("failed to find suitable memory type!");
     }
 
-    BufferCreateResult createBuffer(const Devices &devices, vk::DeviceSize size,
+    createViewProjectionBuffers createBuffer(const Devices &devices, vk::DeviceSize size,
                                     vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties) {
         vk::BufferCreateInfo bufferCreateInfo{};
         bufferCreateInfo.sType = vk::StructureType::eBufferCreateInfo;
@@ -79,6 +79,11 @@ namespace enjine {
         transferQueue.waitIdle();
 
         devices.logicalDevice.freeCommandBuffers(commandPool, commandBuffer);
+    }
+
+    uint32_t getAlignmentSizeForType(vk::PhysicalDevice physicalDevice, uint32_t typeSize) {
+        auto minAlignment = physicalDevice.getProperties().limits.minUniformBufferOffsetAlignment;
+        return (typeSize + minAlignment - 1) & ~(minAlignment - 1);
     }
 }
 

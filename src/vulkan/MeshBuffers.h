@@ -30,7 +30,7 @@ namespace enjine {
         CachedBufferInfo vertexBuffer{};
         CachedBufferInfo indexBuffer{};
 
-        BufferCreateResult createVertexBuffer() const;
-        BufferCreateResult createIndexBuffer() const;
+        createViewProjectionBuffers createVertexBuffer() const;
+        createViewProjectionBuffers createIndexBuffer() const;
     };
 }

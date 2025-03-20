@@ -32,7 +32,7 @@ do {                                                                            
 namespace enjine {
     struct Devices;
 
-    struct BufferCreateResult {
+    struct createViewProjectionBuffers {
         vk::UniqueBuffer buffer;
         vk::UniqueDeviceMemory memory;
     };
@@ -40,7 +40,7 @@ namespace enjine {
     uint32_t findMemoryTypeIdx(vk::PhysicalDevice physicalDevice, uint32_t memoryTypeBits,
                                vk::MemoryPropertyFlags flags);
 
-    BufferCreateResult createBuffer(const Devices &devices, vk::DeviceSize size,
+    createViewProjectionBuffers createBuffer(const Devices &devices, vk::DeviceSize size,
                                     vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties);
 
     void fillBuffer(const Devices &devices, vk::DeviceMemory bufferMemory,
@@ -51,7 +51,7 @@ namespace enjine {
                     vk::Buffer dstBuffer, vk::DeviceSize size);
 
     template<typename T>
-    BufferCreateResult createGpuLocalBuffer(
+    createViewProjectionBuffers createGpuLocalBuffer(
         const Devices &devices,
         const std::vector<T> &data,
         vk::BufferUsageFlags usage,
@@ -79,4 +79,6 @@ namespace enjine {
 
         return dstResult;
     }
+
+    uint32_t getAlignmentSizeForType(vk::PhysicalDevice physicalDevice, uint32_t typeSize);
 }

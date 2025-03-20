@@ -284,29 +284,43 @@ namespace enjine {
     }
 
     void VulkanRendererConstructor::createDescriptorSetLayout() {
-        vk::DescriptorSetLayoutBinding layoutBinding = {};
-        layoutBinding.binding = 0;
-        layoutBinding.descriptorType = vk::DescriptorType::eUniformBuffer;
-        layoutBinding.descriptorCount = 1;
-        layoutBinding.stageFlags = vk::ShaderStageFlagBits::eVertex;
+        vk::DescriptorSetLayoutBinding vpBinding = {};
+        vpBinding.binding = 0;
+        vpBinding.descriptorType = vk::DescriptorType::eUniformBuffer;
+        vpBinding.descriptorCount = 1;
+        vpBinding.stageFlags = vk::ShaderStageFlagBits::eVertex;
+
+        vk::DescriptorSetLayoutBinding modelBinding = {};
+        modelBinding.binding = 1;
+        modelBinding.descriptorType = vk::DescriptorType::eUniformBufferDynamic;
+        modelBinding.descriptorCount = 1;
+        modelBinding.stageFlags = vk::ShaderStageFlagBits::eVertex;
+
+        std::array bindings = {vpBinding, modelBinding};
 
         vk::DescriptorSetLayoutCreateInfo descriptorSetLayoutInfo = {};
         descriptorSetLayoutInfo.sType = vk::StructureType::eDescriptorSetLayoutCreateInfo;
-        descriptorSetLayoutInfo.bindingCount = 1;
-        descriptorSetLayoutInfo.pBindings = &layoutBinding;
+        descriptorSetLayoutInfo.bindingCount = bindings.size();
+        descriptorSetLayoutInfo.pBindings = bindings.data();
 
         descriptorSetLayout = logicalDevice->createDescriptorSetLayoutUnique(descriptorSetLayoutInfo);
     }
 
     void VulkanRendererConstructor::createDescriptorPool() {
-        vk::DescriptorPoolSize poolSize = {};
-        poolSize.type = vk::DescriptorType::eUniformBuffer;
-        poolSize.descriptorCount = static_cast<uint32_t>(imageResources.size());
+        vk::DescriptorPoolSize viewProjectionPoolSize = {};
+        viewProjectionPoolSize.type = vk::DescriptorType::eUniformBuffer;
+        viewProjectionPoolSize.descriptorCount = static_cast<uint32_t>(imageResources.size());
+
+        vk::DescriptorPoolSize modelPoolSize = {};
+        modelPoolSize.type = vk::DescriptorType::eUniformBufferDynamic;
+        modelPoolSize.descriptorCount = static_cast<uint32_t>(imageResources.size());
+
+        std::array poolSizes = {viewProjectionPoolSize, modelPoolSize};
 
         vk::DescriptorPoolCreateInfo descriptorPoolInfo = {};
         descriptorPoolInfo.sType = vk::StructureType::eDescriptorPoolCreateInfo;
-        descriptorPoolInfo.poolSizeCount = 1;
-        descriptorPoolInfo.pPoolSizes = &poolSize;
+        descriptorPoolInfo.poolSizeCount = poolSizes.size();
+        descriptorPoolInfo.pPoolSizes = poolSizes.data();
         descriptorPoolInfo.maxSets = static_cast<uint32_t>(imageResources.size());
 
         descriptorPool = logicalDevice->createDescriptorPoolUnique(descriptorPoolInfo);
@@ -323,49 +337,91 @@ namespace enjine {
 
         auto sets = logicalDevice->allocateDescriptorSetsUnique(descriptorSetAllocateInfo);
         for (auto i = 0u; i < imageResources.size(); i++) {
-            imageResources[i].viewProjectionDescriptorSet = std::move(sets[i]);
+            imageResources[i].descriptorSet = std::move(sets[i]);
         }
     }
 
-    void VulkanRendererConstructor::createUniformBuffers() {
-        for (auto &resource: imageResources) {
-            auto createResult = createBuffer(
-                {physicalDevice, logicalDevice.get()},
-                sizeof(ViewProjection),
-                vk::BufferUsageFlagBits::eUniformBuffer,
-                vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent
-            );
+    void VulkanRendererConstructor::createViewProjectionBuffer(ImageResources &resource) {
+        auto createResult = createBuffer(
+            {physicalDevice, logicalDevice.get()},
+            sizeof(ViewProjection),
+            vk::BufferUsageFlagBits::eUniformBuffer,
+            vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent
+        );
 
-            resource.viewProjectionUniformBuffer = std::move(createResult.buffer);
-            resource.viewProjectionUniformBufferMemory = std::move(createResult.memory);
+        resource.viewProjectionUniformBuffer = std::move(createResult.buffer);
+        resource.viewProjectionUniformBufferMemory = std::move(createResult.memory);
+    }
+
+    void VulkanRendererConstructor::createModelBuffer(int maxObjectsPerFrame, ImageResources &resource) {
+        auto modelAlignment = getAlignmentSizeForType(physicalDevice, sizeof(Model));
+
+        auto modelTransferBuffer = createBuffer(
+            {physicalDevice, logicalDevice.get()},
+            modelAlignment * maxObjectsPerFrame,
+            vk::BufferUsageFlagBits::eUniformBuffer,
+            vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent
+        );
+
+        resource.modelTransferBuffer = std::move(modelTransferBuffer.buffer);
+        resource.modelTransferBufferMemory = std::move(modelTransferBuffer.memory);
+    }
+
+    void VulkanRendererConstructor::allocateModelBufferResources(int maxObjectsPerFrame) {
+        auto modelAlignment = getAlignmentSizeForType(physicalDevice, sizeof(Model));
+
+        modelTransferSpace = static_cast<Model *>(aligned_alloc(modelAlignment, sizeof(Model) * maxObjectsPerFrame));
+    }
+
+    void VulkanRendererConstructor::createUniformBuffers(int maxObjectsPerFrame) {
+        for (auto &resource: imageResources) {
+            createViewProjectionBuffer(resource);
+            createModelBuffer(maxObjectsPerFrame, resource);
         }
+        allocateModelBufferResources(maxObjectsPerFrame);
     }
 
     void VulkanRendererConstructor::bindDescriptorsToBuffers() {
-        for (auto& resource: imageResources) {
-            vk::DescriptorBufferInfo bufferInfo = {};
-            bufferInfo.buffer = resource.viewProjectionUniformBuffer.get();
-            bufferInfo.offset = 0;
-            bufferInfo.range = sizeof(ViewProjection);
+        for (auto &resource: imageResources) {
+            vk::DescriptorBufferInfo viewProjectionBufferInfo = {};
+            viewProjectionBufferInfo.buffer = resource.viewProjectionUniformBuffer.get();
+            viewProjectionBufferInfo.offset = 0;
+            viewProjectionBufferInfo.range = sizeof(ViewProjection);
 
-            vk::WriteDescriptorSet writeDescriptorSet = {};
-            writeDescriptorSet.sType = vk::StructureType::eWriteDescriptorSet;
-            writeDescriptorSet.dstSet = resource.viewProjectionDescriptorSet.get();
-            writeDescriptorSet.dstBinding = 0;
-            writeDescriptorSet.dstArrayElement = 0;
-            writeDescriptorSet.descriptorType = vk::DescriptorType::eUniformBuffer;
-            writeDescriptorSet.descriptorCount = 1;
-            writeDescriptorSet.pBufferInfo = &bufferInfo;
+            vk::WriteDescriptorSet writeViewProjectionDescriptorSet = {};
+            writeViewProjectionDescriptorSet.sType = vk::StructureType::eWriteDescriptorSet;
+            writeViewProjectionDescriptorSet.dstSet = resource.descriptorSet.get();
+            writeViewProjectionDescriptorSet.dstBinding = 0;
+            writeViewProjectionDescriptorSet.dstArrayElement = 0;
+            writeViewProjectionDescriptorSet.descriptorType = vk::DescriptorType::eUniformBuffer;
+            writeViewProjectionDescriptorSet.descriptorCount = 1;
+            writeViewProjectionDescriptorSet.pBufferInfo = &viewProjectionBufferInfo;
 
-            logicalDevice->updateDescriptorSets(1, &writeDescriptorSet, 0, nullptr);
+            vk::DescriptorBufferInfo modelBufferInfo = {};
+            modelBufferInfo.buffer = resource.modelTransferBuffer.get();
+            modelBufferInfo.offset = 0;
+            modelBufferInfo.range = sizeof(Model);
+
+            vk::WriteDescriptorSet writeModelDescriptorSet = {};
+            writeModelDescriptorSet.sType = vk::StructureType::eWriteDescriptorSet;
+            writeModelDescriptorSet.dstSet = resource.descriptorSet.get();
+            writeModelDescriptorSet.dstBinding = 1;
+            writeModelDescriptorSet.dstArrayElement = 0;
+            writeModelDescriptorSet.descriptorType = vk::DescriptorType::eUniformBufferDynamic;
+            writeModelDescriptorSet.descriptorCount = 1;
+            writeModelDescriptorSet.pBufferInfo = &modelBufferInfo;
+
+            std::array writeDescriptorSets = {writeViewProjectionDescriptorSet, writeModelDescriptorSet};
+
+            logicalDevice->updateDescriptorSets(writeDescriptorSets.size(), writeDescriptorSets.data(), 0, nullptr);
         }
     }
 
-    void VulkanRendererConstructor::createDescriptorSets() {
+    void VulkanRendererConstructor::createDescriptorSets(int maxObjectsPerFrame) {
         createDescriptorPool();
         createDescriptorSetLayout();
         allocateDescriptorSets();
-        createUniformBuffers();
+        createUniformBuffers(maxObjectsPerFrame);
         bindDescriptorsToBuffers();
     }
 
@@ -385,17 +441,22 @@ namespace enjine {
         }
     }
 
-    void VulkanRendererConstructor::createImageResources() {
+    void VulkanRendererConstructor::createImageResources(int maxObjectsPerFrame) {
         std::vector<ImageResources> imageResources;
         imageResources.resize(swapChainHandle.swapChainImages.size());
         this->imageResources = std::move(imageResources);
 
         createFramebuffers();
         createCommandBuffers();
-        createDescriptorSets();
+        createDescriptorSets(maxObjectsPerFrame);
     }
 
-    std::unique_ptr<VulkanRenderer> VulkanRendererConstructor::create(GLFWwindow *window, int maxFramesInFlight) {
+    std::unique_ptr<VulkanRenderer> VulkanRendererConstructor::create(GLFWwindow *window, int maxObjectsPerFrame,
+                                                                      int maxFramesInFlight) {
+        if (alreadyUsed) {
+            throw std::runtime_error("VulkanRendererConstructor can only be used once");
+        }
+
         this->window = window;
         instance = createInstance();
         createSurface();
@@ -404,28 +465,34 @@ namespace enjine {
         initQueues();
         createSwapChain();
         createRenderPass();
-        createImageResources();
+        createImageResources(maxObjectsPerFrame);
         createGraphicsPipeline();
         createFrameSyncs(maxFramesInFlight);
 
-        return std::make_unique<VulkanRenderer>(RendererResources{
-            window,
-            std::move(instance),
-            physicalDevice,
-            std::move(logicalDevice),
-            std::move(surface),
-            std::move(swapChainHandle),
-            graphicsQueue,
-            presentQueue,
-            std::move(renderPass),
-            std::move(graphicsPipeline),
-            std::move(pipelineLayout),
-            std::move(commandPool),
-            std::move(imageResources),
-            std::move(frameSyncs),
-            std::move(descriptorPool),
-            std::move(descriptorSetLayout),
-        });
+        alreadyUsed = true;
+
+        return std::make_unique<VulkanRenderer>(
+            RendererResources{
+                window,
+                std::move(instance),
+                physicalDevice,
+                std::move(logicalDevice),
+                std::move(surface),
+                std::move(swapChainHandle),
+                graphicsQueue,
+                presentQueue,
+                std::move(renderPass),
+                std::move(graphicsPipeline),
+                std::move(pipelineLayout),
+                std::move(commandPool),
+                std::move(imageResources),
+                std::move(frameSyncs),
+                std::move(descriptorPool),
+                std::move(descriptorSetLayout),
+                modelTransferSpace
+            },
+            maxObjectsPerFrame
+        );
     }
 
     void VulkanRendererConstructor::createSurface() {

@@ -3,6 +3,8 @@
 #include <vulkan/vulkan.hpp>
 
 namespace enjine {
+    struct Model;
+
     struct QueueHandle {
         int index;
         vk::Queue queue;
@@ -13,7 +15,9 @@ namespace enjine {
         vk::UniqueCommandBuffer commandBuffer;
         vk::UniqueBuffer viewProjectionUniformBuffer;
         vk::UniqueDeviceMemory viewProjectionUniformBufferMemory;
-        vk::UniqueDescriptorSet viewProjectionDescriptorSet;
+        vk::UniqueDescriptorSet descriptorSet;
+        vk::UniqueBuffer modelTransferBuffer;
+        vk::UniqueDeviceMemory modelTransferBufferMemory;
     };
 
     struct FrameSync {
@@ -56,5 +60,6 @@ namespace enjine {
         std::vector<FrameSync> frameSyncs;
         vk::UniqueDescriptorPool descriptorPool;
         vk::UniqueDescriptorSetLayout descriptorSetLayout;
+        Model* modelTransferSpace = nullptr;
     };
 }

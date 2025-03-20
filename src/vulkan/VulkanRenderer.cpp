@@ -38,22 +38,56 @@ namespace enjine {
         std::vector<std::vector<MeshBuffers> > inUseBuffers;
         inUseBuffers.reserve(resources.imageResources.size());
         for (int i = 0; i < resources.imageResources.size(); i++) {
-            inUseBuffers.push_back(std::vector<MeshBuffers>());
+            inUseBuffers.emplace_back();
         }
         return inUseBuffers;
     }
 
-    void VulkanRenderer::writeViewProjection(uint32_t imageIndex, const ViewProjection &viewProjection) {
+    void VulkanRenderer::writeModels(uint32_t imageIndex, const std::vector<RenderObject> &objects) const {
+        auto modelAlignment = getAlignmentSizeForType(resources.physicalDevice, sizeof(Model));
+
+        for (auto i = 0; i < objects.size(); i++) {
+            auto currentModelPtr = reinterpret_cast<Model *>(
+                reinterpret_cast<uint64_t>(resources.modelTransferSpace) + i * modelAlignment);
+            *currentModelPtr = objects[i].model;
+        }
+
+        auto data = resources.logicalDevice->mapMemory(
+            resources.imageResources[imageIndex].modelTransferBufferMemory.get(),
+            0,
+            objects.size() * modelAlignment
+        );
+        std::memcpy(data, resources.modelTransferSpace, objects.size() * modelAlignment);
+        resources.logicalDevice->unmapMemory(resources.imageResources[imageIndex].modelTransferBufferMemory.get());
+    }
+
+    Extent VulkanRenderer::getExtent() const {
+        return {
+            resources.swapChainHandle.swapChainExtent.width,
+            resources.swapChainHandle.swapChainExtent.height
+        };
+    }
+
+    VulkanRenderer::~VulkanRenderer() {
+        resources.logicalDevice->waitIdle();
+    }
+
+    void VulkanRenderer::writeViewProjection(uint32_t imageIndex, const ViewProjection &viewProjection) const {
         auto data = resources.logicalDevice->mapMemory(
             resources.imageResources[imageIndex].viewProjectionUniformBufferMemory.get(),
             0,
             sizeof(ViewProjection)
         );
         std::memcpy(data, &viewProjection, sizeof(ViewProjection));
-        resources.logicalDevice->unmapMemory(resources.imageResources[imageIndex].viewProjectionUniformBufferMemory.get());
+        resources.logicalDevice->unmapMemory(
+            resources.imageResources[imageIndex].viewProjectionUniformBufferMemory.get());
     }
 
     void VulkanRenderer::render(const std::vector<RenderObject> &meshes, ViewProjection viewProjection) {
+        if (meshes.size() > maxObjectsPerFrame) {
+            throw std::runtime_error("Too many objects to render in one frame");
+        }
+
         auto fence = resources.frameSyncs[currentFrame].inFlightFence.get();
 
         if (auto result = resources.logicalDevice->waitForFences(1, &fence, VK_TRUE, UINT64_MAX);
@@ -70,6 +104,7 @@ namespace enjine {
         ).value;
 
         writeViewProjection(imageIndex, viewProjection);
+        writeModels(imageIndex, meshes);
         recordDrawCommand(imageIndex, meshes);
         submitBuffer(imageIndex);
         present(imageIndex);
@@ -108,14 +143,6 @@ namespace enjine {
         meshBuffers.clear();
         meshBuffers.reserve(objects.size());
 
-        commandBuffer.bindDescriptorSets(
-            vk::PipelineBindPoint::eGraphics,
-            resources.pipelineLayout.get(),
-            0,
-            resources.imageResources[imageIndex].viewProjectionDescriptorSet.get(),
-            nullptr
-        );
-
         for (int i = 0; i < objects.size(); i++) {
             meshBuffers.emplace_back(
                 MeshBufferResources{
@@ -123,6 +150,14 @@ namespace enjine {
                     resources.commandPool.get(),
                     resources.graphicsQueue.queue
                 }, objects[i].mesh
+            );
+
+            commandBuffer.bindDescriptorSets(
+                vk::PipelineBindPoint::eGraphics,
+                resources.pipelineLayout.get(),
+                0,
+                resources.imageResources[imageIndex].descriptorSet.get(),
+                { i * getAlignmentSizeForType(resources.physicalDevice, sizeof(Model))}
             );
 
             commandBuffer.bindVertexBuffers(0, meshBuffers[i].getVertexBuffer(), {0});
