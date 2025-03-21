@@ -38,7 +38,5 @@ namespace enjine {
         void present(uint32_t imageIndex) const;
 
         std::vector<std::vector<MeshBuffers> > initInUseBuffersMap() const;
-
-        void writeModels(uint32_t imageIndex, const std::vector<RenderObject>& objects) const;
     };
 }

@@ -107,6 +107,11 @@ int main() {
                 projection
             }
         );
+        renderObjects[1].model.model = rotate(
+            renderObjects[1].model.model,
+            glm::radians(1.0f),
+            glm::vec3{0.0f, 1.0f, 1.0f}
+        );
     }
 
     glfwTerminate();

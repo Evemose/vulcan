@@ -8,13 +8,13 @@ layout (binding = 0) uniform ViewProjection {
     mat4 projection;
 } viewProjection;
 
-layout (binding = 1) uniform Model {
+layout (push_constant) uniform PushModel {
     mat4 model;
-} model;
+} pushModel;
 
 layout (location = 0) out vec4 vertexColor;
 
 void main() {
-    gl_Position = viewProjection.projection * viewProjection.view * model.model * vec4(position, 1.0);
+    gl_Position = viewProjection.projection * viewProjection.view * pushModel.model * vec4(position, 1.0);
     vertexColor = vec4(color, 1.0);
 }

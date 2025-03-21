@@ -35,7 +35,7 @@ namespace enjine {
         std::vector<FrameSync> frameSyncs;
         vk::UniqueDescriptorPool descriptorPool;
         vk::UniqueDescriptorSetLayout descriptorSetLayout;
-        Model* modelTransferSpace = nullptr;
+        std::unique_ptr<vk::PushConstantRange> pushConstantRange = std::make_unique<vk::PushConstantRange>();
 
         void createSurface();
 
@@ -51,6 +51,8 @@ namespace enjine {
 
         void createGraphicsPipeline();
 
+        void createPushConstantRange() const;
+
         void createImageResources(int maxObjectsPerFrame);
 
         void createFramebuffers();
@@ -65,15 +67,11 @@ namespace enjine {
 
         void createViewProjectionBuffer(ImageResources &resource);
 
-        void createModelBuffer(int maxObjectsPerFrame, ImageResources &resource);
-
-        void allocateModelBufferResources(int maxObjectsPerFrame);
-
-        void createUniformBuffers(int maxObjectsPerFrame);
+        void createUniformBuffers();
 
         void bindDescriptorsToBuffers();
 
-        void createDescriptorSets(int maxObjectsPerFrame);
+        void createDescriptorSets();
 
         void createFrameSyncs(int maxFramesInFlight);
 

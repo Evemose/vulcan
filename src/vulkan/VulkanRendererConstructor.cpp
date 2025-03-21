@@ -219,8 +219,8 @@ namespace enjine {
         pipelineLayoutInfo.sType = vk::StructureType::ePipelineLayoutCreateInfo;
         pipelineLayoutInfo.setLayoutCount = 1;
         pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout.get();
-        pipelineLayoutInfo.pushConstantRangeCount = 0;
-        pipelineLayoutInfo.pPushConstantRanges = nullptr;
+        pipelineLayoutInfo.pushConstantRangeCount = 1;
+        pipelineLayoutInfo.pPushConstantRanges = pushConstantRange.get();
 
         auto pipelineLayout = logicalDevice->createPipelineLayoutUnique(pipelineLayoutInfo);
 
@@ -244,6 +244,12 @@ namespace enjine {
 
         graphicsPipeline = logicalDevice->createGraphicsPipelineUnique(nullptr, pipelineInfo).value;
         this->pipelineLayout = std::move(pipelineLayout);
+    }
+
+    void VulkanRendererConstructor::createPushConstantRange() const {
+        pushConstantRange->offset = 0;
+        pushConstantRange->size = sizeof(Model);
+        pushConstantRange->stageFlags = vk::ShaderStageFlagBits::eVertex;
     }
 
     void VulkanRendererConstructor::createFramebuffers() {
@@ -353,32 +359,10 @@ namespace enjine {
         resource.viewProjectionUniformBufferMemory = std::move(createResult.memory);
     }
 
-    void VulkanRendererConstructor::createModelBuffer(int maxObjectsPerFrame, ImageResources &resource) {
-        auto modelAlignment = getAlignmentSizeForType(physicalDevice, sizeof(Model));
-
-        auto modelTransferBuffer = createBuffer(
-            {physicalDevice, logicalDevice.get()},
-            modelAlignment * maxObjectsPerFrame,
-            vk::BufferUsageFlagBits::eUniformBuffer,
-            vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent
-        );
-
-        resource.modelTransferBuffer = std::move(modelTransferBuffer.buffer);
-        resource.modelTransferBufferMemory = std::move(modelTransferBuffer.memory);
-    }
-
-    void VulkanRendererConstructor::allocateModelBufferResources(int maxObjectsPerFrame) {
-        auto modelAlignment = getAlignmentSizeForType(physicalDevice, sizeof(Model));
-
-        modelTransferSpace = static_cast<Model *>(aligned_alloc(modelAlignment, sizeof(Model) * maxObjectsPerFrame));
-    }
-
-    void VulkanRendererConstructor::createUniformBuffers(int maxObjectsPerFrame) {
+    void VulkanRendererConstructor::createUniformBuffers() {
         for (auto &resource: imageResources) {
             createViewProjectionBuffer(resource);
-            createModelBuffer(maxObjectsPerFrame, resource);
         }
-        allocateModelBufferResources(maxObjectsPerFrame);
     }
 
     void VulkanRendererConstructor::bindDescriptorsToBuffers() {
@@ -397,31 +381,17 @@ namespace enjine {
             writeViewProjectionDescriptorSet.descriptorCount = 1;
             writeViewProjectionDescriptorSet.pBufferInfo = &viewProjectionBufferInfo;
 
-            vk::DescriptorBufferInfo modelBufferInfo = {};
-            modelBufferInfo.buffer = resource.modelTransferBuffer.get();
-            modelBufferInfo.offset = 0;
-            modelBufferInfo.range = sizeof(Model);
-
-            vk::WriteDescriptorSet writeModelDescriptorSet = {};
-            writeModelDescriptorSet.sType = vk::StructureType::eWriteDescriptorSet;
-            writeModelDescriptorSet.dstSet = resource.descriptorSet.get();
-            writeModelDescriptorSet.dstBinding = 1;
-            writeModelDescriptorSet.dstArrayElement = 0;
-            writeModelDescriptorSet.descriptorType = vk::DescriptorType::eUniformBufferDynamic;
-            writeModelDescriptorSet.descriptorCount = 1;
-            writeModelDescriptorSet.pBufferInfo = &modelBufferInfo;
-
-            std::array writeDescriptorSets = {writeViewProjectionDescriptorSet, writeModelDescriptorSet};
+            std::array writeDescriptorSets = {writeViewProjectionDescriptorSet};
 
             logicalDevice->updateDescriptorSets(writeDescriptorSets.size(), writeDescriptorSets.data(), 0, nullptr);
         }
     }
 
-    void VulkanRendererConstructor::createDescriptorSets(int maxObjectsPerFrame) {
+    void VulkanRendererConstructor::createDescriptorSets() {
         createDescriptorPool();
         createDescriptorSetLayout();
         allocateDescriptorSets();
-        createUniformBuffers(maxObjectsPerFrame);
+        createUniformBuffers();
         bindDescriptorsToBuffers();
     }
 
@@ -448,7 +418,7 @@ namespace enjine {
 
         createFramebuffers();
         createCommandBuffers();
-        createDescriptorSets(maxObjectsPerFrame);
+        createDescriptorSets();
     }
 
     std::unique_ptr<VulkanRenderer> VulkanRendererConstructor::create(GLFWwindow *window, int maxObjectsPerFrame,
@@ -466,6 +436,7 @@ namespace enjine {
         createSwapChain();
         createRenderPass();
         createImageResources(maxObjectsPerFrame);
+        createPushConstantRange();
         createGraphicsPipeline();
         createFrameSyncs(maxFramesInFlight);
 
@@ -489,7 +460,7 @@ namespace enjine {
                 std::move(frameSyncs),
                 std::move(descriptorPool),
                 std::move(descriptorSetLayout),
-                modelTransferSpace
+                std::move(pushConstantRange)
             },
             maxObjectsPerFrame
         );

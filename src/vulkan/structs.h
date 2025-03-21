@@ -1,4 +1,6 @@
 #pragma once
+#include <memory>
+
 #include "GLFW/glfw3.h"
 #include <vulkan/vulkan.hpp>
 
@@ -16,8 +18,6 @@ namespace enjine {
         vk::UniqueBuffer viewProjectionUniformBuffer;
         vk::UniqueDeviceMemory viewProjectionUniformBufferMemory;
         vk::UniqueDescriptorSet descriptorSet;
-        vk::UniqueBuffer modelTransferBuffer;
-        vk::UniqueDeviceMemory modelTransferBufferMemory;
     };
 
     struct FrameSync {
@@ -60,6 +60,6 @@ namespace enjine {
         std::vector<FrameSync> frameSyncs;
         vk::UniqueDescriptorPool descriptorPool;
         vk::UniqueDescriptorSetLayout descriptorSetLayout;
-        Model* modelTransferSpace = nullptr;
+        std::unique_ptr<vk::PushConstantRange> pushConstantRange;
     };
 }

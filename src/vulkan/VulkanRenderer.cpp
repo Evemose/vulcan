@@ -43,24 +43,6 @@ namespace enjine {
         return inUseBuffers;
     }
 
-    void VulkanRenderer::writeModels(uint32_t imageIndex, const std::vector<RenderObject> &objects) const {
-        auto modelAlignment = getAlignmentSizeForType(resources.physicalDevice, sizeof(Model));
-
-        for (auto i = 0; i < objects.size(); i++) {
-            auto currentModelPtr = reinterpret_cast<Model *>(
-                reinterpret_cast<uint64_t>(resources.modelTransferSpace) + i * modelAlignment);
-            *currentModelPtr = objects[i].model;
-        }
-
-        auto data = resources.logicalDevice->mapMemory(
-            resources.imageResources[imageIndex].modelTransferBufferMemory.get(),
-            0,
-            objects.size() * modelAlignment
-        );
-        std::memcpy(data, resources.modelTransferSpace, objects.size() * modelAlignment);
-        resources.logicalDevice->unmapMemory(resources.imageResources[imageIndex].modelTransferBufferMemory.get());
-    }
-
     Extent VulkanRenderer::getExtent() const {
         return {
             resources.swapChainHandle.swapChainExtent.width,
@@ -104,7 +86,6 @@ namespace enjine {
         ).value;
 
         writeViewProjection(imageIndex, viewProjection);
-        writeModels(imageIndex, meshes);
         recordDrawCommand(imageIndex, meshes);
         submitBuffer(imageIndex);
         present(imageIndex);
@@ -157,7 +138,15 @@ namespace enjine {
                 resources.pipelineLayout.get(),
                 0,
                 resources.imageResources[imageIndex].descriptorSet.get(),
-                { i * getAlignmentSizeForType(resources.physicalDevice, sizeof(Model))}
+                {i * getAlignmentSizeForType(resources.physicalDevice, sizeof(Model))}
+            );
+
+            commandBuffer.pushConstants(
+                resources.pipelineLayout.get(),
+                vk::ShaderStageFlagBits::eVertex,
+                0,
+                sizeof(Model),
+                &objects[i].model
             );
 
             commandBuffer.bindVertexBuffers(0, meshBuffers[i].getVertexBuffer(), {0});
