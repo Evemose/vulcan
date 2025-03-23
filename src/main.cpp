@@ -1,5 +1,10 @@
-#include <stdexcept>
+#define GLM_FORCE_RADIANS
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
+#define GLM_FORCE_DEFAULT_ALIGNED_GENTYPES
 #define GLFW_INCLUDE_VULKAN
+
+#include <stdexcept>
+#include <iostream>
 #include <GLFW/glfw3.h>
 #include <memory>
 #include <string>
@@ -10,7 +15,7 @@
 
 using WindowPtr = std::unique_ptr<GLFWwindow, void(*)(GLFWwindow *)>;
 
-WindowPtr createWindow(const std::string &title, int width, int height) {
+WindowPtr createWindow_(const std::string &title, int width, int height) {
     if (!glfwInit()) {
         throw std::runtime_error("Failed to initialize GLFW");
     }
@@ -35,7 +40,7 @@ glm::vec3 generateRandomColor() {
 }
 
 int main() {
-    auto window = createWindow("Hello World!", 800, 600);
+    auto window = createWindow_("Hello World!", 800, 600);
     auto renderer = enjine::VulkanRendererConstructor().create(window.get());
 
     std::vector<enjine::RenderObject> renderObjects;
